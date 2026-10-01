@@ -361,6 +361,9 @@
         "ssi263-speech",
         "TGSpeechBox",
         "votraxsc01-nvda"
+      ],
+      "exclude_repositories": [
+        "MagiskOnWSA"
       ]
     },
     {
