@@ -2182,7 +2182,15 @@ def fetch_github_owners(
                     _github_owner_repository_names(owners)
                 )
             except RuntimeError as exc:
-                if "RATE_LIMITED" not in str(exc) or not addon_repositories:
+                # GitHub reports an over-budget GraphQL query as
+                # RESOURCE_LIMITS_EXCEEDED rather than RATE_LIMITED; both are
+                # transient, so degrade to the cached repositories and retry
+                # discovery on the next run instead of failing the build.
+                transient = (
+                    "RATE_LIMITED" in str(exc)
+                    or "RESOURCE_LIMITS_EXCEEDED" in str(exc)
+                )
+                if not transient or not addon_repositories:
                     raise
                 log(
                     "GitHub owner repository discovery was rate-limited; "
