@@ -1494,6 +1494,37 @@ class ChannelDuplicateTests(unittest.TestCase):
         self.assertEqual(["ExampleAddon"], [entry["name"] for entry in kept])
         self.assertEqual(1, len(rejected))
 
+    def test_an_older_dev_build_numbered_above_stable_is_dropped(self):
+        """ColumnsReview: 2022's "20221104-dev" outranks 2026's 5.7.0 in NVDA."""
+        stable = self._entry("stable", "5.7.0", source="github_owner")
+        stable["submission_ms"] = 1783356106000
+        dev = self._entry("dev", "20221104-dev", source="github_owner")
+        dev["submission_ms"] = 1667580705000
+        kept, rejected = mirror.drop_redundant_channel_duplicates([stable, dev])
+
+        self.assertEqual([stable], kept)
+        self.assertIn("predates the stable release", rejected[0]["reason"])
+
+    def test_a_newer_dev_build_numbered_above_stable_is_kept(self):
+        stable = self._entry("stable", "5.7.0", source="github_owner")
+        stable["submission_ms"] = 1667580705000
+        dev = self._entry("dev", "20261104-dev", source="github_owner")
+        dev["submission_ms"] = 1783356106000
+        kept, rejected = mirror.drop_redundant_channel_duplicates([stable, dev])
+
+        self.assertEqual([stable, dev], kept)
+        self.assertEqual([], rejected)
+
+    def test_bestmidi_push_time_is_not_a_stable_release_date(self):
+        stable = self._entry("stable", "1.0", source="bestmidi")
+        stable["submission_ms"] = 1783356106000
+        dev = self._entry("dev", "1.1", source="github_owner")
+        dev["submission_ms"] = 1667580705000
+        kept, rejected = mirror.drop_redundant_channel_duplicates([stable, dev])
+
+        self.assertEqual([stable, dev], kept)
+        self.assertEqual([], rejected)
+
 
 class HelperSafetyTests(unittest.TestCase):
     def test_helper_does_not_replace_nvda_data_manager_singleton(self):

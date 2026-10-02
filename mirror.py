@@ -3059,15 +3059,28 @@ def drop_redundant_channel_duplicates(entries):
     itself compares, so "2026.05.03" and "2026.5.3" are recognised as one
     release despite the different spelling.
 
+    A pre-release that NVDA ranks above stable but that was published before
+    the stable release is dropped too. ColumnsReview's 2022 "20221104-dev"
+    build reads as 20221104.0.0, above the 2026 stable 5.7.0, so NVDA offered
+    the four-year-old build as an update. bestmidi's time is the repo's last
+    push, not a release date, so it never counts as the stable release date.
+
     Returns (kept, rejected).
     """
     stable_versions = {}
+    stable_released = {}
     for entry in entries:
         if (entry.get("channel") or "stable") != "stable":
             continue
         version = sanitize_version(entry.get("version"))
         if version is not None:
-            stable_versions.setdefault(entry["name"].casefold(), set()).add(version)
+            key = entry["name"].casefold()
+            stable_versions.setdefault(key, set()).add(version)
+            if entry.get("submission_ms") and entry.get("source") != "bestmidi":
+                stable_released[key] = max(
+                    stable_released.get(key, (version, 0)),
+                    (version, entry["submission_ms"]),
+                )
 
     kept = []
     rejected = []
@@ -3083,6 +3096,24 @@ def drop_redundant_channel_duplicates(entries):
                 "addonId": entry.get("name"),
                 "source": entry.get("source"),
                 "reason": f"same release as the stable channel (listed as {channel})",
+            })
+            continue
+        stable = stable_released.get(entry["name"].casefold())
+        if (
+            channel != "stable"
+            and stable is not None
+            and version is not None
+            and version > stable[0]
+            and entry.get("submission_ms")
+            and entry["submission_ms"] < stable[1]
+        ):
+            rejected.append({
+                "addonId": entry.get("name"),
+                "source": entry.get("source"),
+                "reason": (
+                    f"{channel} build predates the stable release but would "
+                    "be offered as an update to it"
+                ),
             })
             continue
         kept.append(entry)
@@ -4170,10 +4201,13 @@ def main():
             f"{before_es - original_es}"
         )
 
-    # 2b. Drop community-source entries superseded by a pinned variant. These
+    # 2b. Drop every unpinned entry superseded by a pinned variant. These
     # share the generic manifest name of a pinned add-on (e.g. the four
     # "Eloquence" variants all publish name = Eloquence), so they would appear
-    # as duplicates alongside the distinctly-named pinned entries.
+    # as duplicates alongside the distinctly-named pinned entries. Author
+    # releases count too: fastfinge's old v8 bundle kept the generic id, and
+    # NVDA offered it as a "migration" to anyone who sideloaded Eloquence64RS,
+    # whose "v19.1.4-RS" version NVDA cannot parse.
     excluded_names = {
         (spec.get("name") or "").strip()
         for spec in _load_excluded(PINNED_CONFIG_PATH)
@@ -4182,7 +4216,7 @@ def main():
         kept = []
         excluded_count = 0
         for e in todo:
-            if e.get("source") in ("ru", "bestmidi") and e.get("name") in excluded_names:
+            if e.get("source") != "pinned" and e.get("name") in excluded_names:
                 rejected.append({
                     "addonId": e.get("name"),
                     "source": e.get("source"),
