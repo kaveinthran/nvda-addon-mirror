@@ -2181,14 +2181,20 @@ def fetch_github_owners(
                 discovered_repositories, discovered_fork_parents = (
                     _github_owner_repository_names(owners)
                 )
-            except RuntimeError as exc:
+            except (RuntimeError, HTTPError) as exc:
                 # GitHub reports an over-budget GraphQL query as
                 # RESOURCE_LIMITS_EXCEEDED rather than RATE_LIMITED; both are
                 # transient, so degrade to the cached repositories and retry
                 # discovery on the next run instead of failing the build.
+                # A raw HTTPError from the GraphQL endpoint (e.g. 502/503
+                # after the built-in retries) is transient the same way.
                 transient = (
                     "RATE_LIMITED" in str(exc)
                     or "RESOURCE_LIMITS_EXCEEDED" in str(exc)
+                    or (
+                        isinstance(exc, HTTPError)
+                        and (exc.code in (403, 429) or 500 <= exc.code < 600)
+                    )
                 )
                 if not transient or not addon_repositories:
                     raise
