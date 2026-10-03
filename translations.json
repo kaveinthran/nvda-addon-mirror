@@ -4790,6 +4790,10 @@
     "versionCollector": {
       "summary": "VersionCollector",
       "description": "The Version Collector add-on keeps track of all names and versions of the software used while running NVDA.\nIt provides a list that can be copied/exported for diagnostics and support."
+    },
+    "ShiKuangBrailleTranslate": {
+      "summary": "ShiKuang Braille Translate",
+      "description": "Translates Chinese characters into Chinese Braille using the BWordX engine for display on a Braille display. Supports national standard, double-pinyin, and ideographic Braille."
     }
   }
 }
