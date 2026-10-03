@@ -2216,7 +2216,8 @@
       "description": "The Agenda add-on provides better access to the Agenda program of the same name using NVDA.\nAgenda for Windows was developed by Jean-Claude Mortimore."
     },
     "NVIDIAMonitor": {
-      "description": "The NVIDIA Monitor add-on allows you to monitor various parameters of NVIDIA video cards, such as name, used memory, available and total memory, power consumption, temperature and others.\nKeyboard shortcut:\nNVDA + Alt + g: Declaring the GPU name/model.\nNVDA + Alt + u: Declaring the GPU UUID.\nNVDA + Alt + v: Announces the driver version.\nNVDA + Control + Alt + v: Announces the BIOS version.\nNVDA + Alt + 1: Reports GPU load.\nNVDA + Alt + 2: Reports memory load.\nNVDA + Alt + 3: Reports available memory.\nNVDA + Alt + 4: Reports memory used.\nNVDA + Alt + 5: Displays the total amount of memory.\nNVDA + Alt + 6: Displays GPU temperature.\nNVDA + Alt + 7: Shows power consumption.\nNVDA + Alt + 8: Announces the power limit.\nNVDA + Alt + 9: Announces the number of CUDA processes.\nNVDA + Alt + 0: Reports the amount of memory used by processes.\nNVDA + Control + Alt + 1: Reports fan speed.\nNVDA + Control + Alt + 2: Reports the GPU clock speed.\nNVDA + Control + Alt + 3: Announces the maximum GPU clock speed.\nNVDA + Control + Alt + 4: Announces the SM clock speed.\nNVDA + Control + Alt + 5: Declares the maximum frequency of the SM clock.\nNVDA + Control + Alt + 6: Declares the memory clock speed.\nNVDA + Control + Alt + 7: Declares the maximum memory clock frequency.\nNVDA + Control + Alt + 8: Advertise TX Bandwidth.\nNVDA + Control + Alt + 9: Announces RX throughput.\nNVDA + Control + Alt + 0: Reports power status.\nDouble clicks copy information to the clipboard.\nNote: All of the following keyboard shortcuts can be configured in the Input Gestures category, under NVIDIA Monitor."
+      "description": "The NVIDIA Monitor add-on allows you to monitor various parameters of NVIDIA video cards, such as name, used memory, available and total memory, power consumption, temperature and others.\nKeyboard shortcut:\nNVDA + Alt + g: Declaring the GPU name/model.\nNVDA + Alt + u: Declaring the GPU UUID.\nNVDA + Alt + v: Announces the driver version.\nNVDA + Control + Alt + v: Announces the BIOS version.\nNVDA + Alt + 1: Reports GPU load.\nNVDA + Alt + 2: Reports memory load.\nNVDA + Alt + 3: Reports available memory.\nNVDA + Alt + 4: Reports memory used.\nNVDA + Alt + 5: Displays the total amount of memory.\nNVDA + Alt + 6: Displays GPU temperature.\nNVDA + Alt + 7: Shows power consumption.\nNVDA + Alt + 8: Announces the power limit.\nNVDA + Alt + 9: Announces the number of CUDA processes.\nNVDA + Alt + 0: Reports the amount of memory used by processes.\nNVDA + Control + Alt + 1: Reports fan speed.\nNVDA + Control + Alt + 2: Reports the GPU clock speed.\nNVDA + Control + Alt + 3: Announces the maximum GPU clock speed.\nNVDA + Control + Alt + 4: Announces the SM clock speed.\nNVDA + Control + Alt + 5: Declares the maximum frequency of the SM clock.\nNVDA + Control + Alt + 6: Declares the memory clock speed.\nNVDA + Control + Alt + 7: Declares the maximum memory clock frequency.\nNVDA + Control + Alt + 8: Advertise TX Bandwidth.\nNVDA + Control + Alt + 9: Announces RX throughput.\nNVDA + Control + Alt + 0: Reports power status.\nDouble clicks copy information to the clipboard.\nNote: All of the following keyboard shortcuts can be configured in the Input Gestures category, under NVIDIA Monitor.",
+      "summary": "NVIDIAMonitor"
     },
     "addonUpdater": {
       "summary": "AddonUpdater",
@@ -2226,7 +2227,8 @@
       "description": "The NumLockManager add-on is used to control the state of the numLock key.\nNumLock Manager Settings: This dialog, located in the NVDA menu, Options submenu, provides the following options to automatically set the state of the NumLock key when loading an add-on or when NVDA switches to a different configuration profile:\nOff: The NumLock key will be automatically turned off.\nOn: The NumLock key will be automatically enabled.\nNot changed: will remain in its current state.\nNote: You can assign a keyboard shortcut to open this dialog from the NVDA menu, Options submenu, Input Gestures dialog, Configuration category, to the shortcut Displays the NumLock Manager settings dialog."
     },
     "HookManager": {
-      "description": "The HookManager add-on allows you to lock the keyboard and mouse.\nKeyboard shortcut:\nNVDA + SHIFT + K: Lock.\nNVDA + SHIFT + O: Unlock.\nWhen pressing commands, short sounds are played indicating locking and unlocking.\nChanging the keyboard shortcut was not implemented.\nThe add-on has no settings."
+      "description": "The HookManager add-on allows you to lock the keyboard and mouse.\nKeyboard shortcut:\nNVDA + SHIFT + K: Lock.\nNVDA + SHIFT + O: Unlock.\nWhen pressing commands, short sounds are played indicating locking and unlocking.\nChanging the keyboard shortcut was not implemented.\nThe add-on has no settings.",
+      "summary": "HookManager"
     },
     "crypto_info": {
       "description": "The CryptoInfo add-on receives information about cryptocurrencies.\nnvda+Alt+K - Show list of cryptocurrencies\nnvda+Alt+0-9 - Listen to information about the selected cryptocurrency in positions from 0 to 9\n<blockquote>\nThat is, nvda+Alt+0, nvda+Alt+1, nvda+Alt+2 and so on.\nKeyboard shortcuts can be changed in input gestures, in the “CryptoInfo” category.\n</blockquote>"
@@ -2301,7 +2303,8 @@
       "summary": "Dictionaries Almaany"
     },
     "devHelper": {
-      "description": "The purpose of the DevHelper add-on is to make debugging easier in NVDA.\nCurrent feature: Add marked lines to the log to make debugging easier.\nKey Combination:\nNVDA+Shift+F1: Inserts a line with a flag into the NVDA log.\nWhen you press the command key, the add-on will insert into the NVDA log (at the information level) the line, Flag 1, and will also announce: \"Mark 1 logged!\".\nIf you press the key again, the line, Mark 2, will be inserted, and the message: \"Mark 2 logged\" will be spoken.\nThe keyboard shortcut can be changed in input gestures, under Debugging Assistant.\nIn the NVDA settings, in the Debugging Assistant panel, you can specify the number of empty lines before and after the line with the mark.\nYou can read about other features of the add-on in the help."
+      "description": "The purpose of the DevHelper add-on is to make debugging easier in NVDA.\nCurrent feature: Add marked lines to the log to make debugging easier.\nKey Combination:\nNVDA+Shift+F1: Inserts a line with a flag into the NVDA log.\nWhen you press the command key, the add-on will insert into the NVDA log (at the information level) the line, Flag 1, and will also announce: \"Mark 1 logged!\".\nIf you press the key again, the line, Mark 2, will be inserted, and the message: \"Mark 2 logged\" will be spoken.\nThe keyboard shortcut can be changed in input gestures, under Debugging Assistant.\nIn the NVDA settings, in the Debugging Assistant panel, you can specify the number of empty lines before and after the line with the mark.\nYou can read about other features of the add-on in the help.",
+      "summary": "DevHelper"
     },
     "jieshuoSounds": {
       "summary": "Jieshuo Sound Theme",
@@ -2344,7 +2347,8 @@
       "description": "The SeikaMini add-on is a driver for Seika Notetakers braille devices.\nDriver repackaging by Accessolutions\nsupplied by the manufacturer as an add-on to NVDA."
     },
     "TreeNav": {
-      "description": "The TreeNav add-on adds convenient navigation through the tree view.\nCurrently only Thunderbird email chain is supported.\nTeams:\nNVDA+Control+up/down arrow Allows you to move to the previous/next element at the same level.\nNVDA+Control+Right Arrow Move to first child element.\nNVDA+Control+Left Arrow Move to parent element.\nNote: The add-on is still in development and is an alpha version."
+      "description": "The TreeNav add-on adds convenient navigation through the tree view.\nCurrently only Thunderbird email chain is supported.\nTeams:\nNVDA+Control+up/down arrow Allows you to move to the previous/next element at the same level.\nNVDA+Control+Right Arrow Move to first child element.\nNVDA+Control+Left Arrow Move to parent element.\nNote: The add-on is still in development and is an alpha version.",
+      "summary": "TreeNav"
     },
     "espeak_ng_custom": {
       "summary": "eSpeak NG Custom",
@@ -2366,10 +2370,12 @@
       "description": "The ClosingTools add-on will add the following keyboard shortcuts to NVDA:\nNot assigned, Close the active tab by sending Control+F4\nControl+Pause, Close the active tab by sending Control+W.\nAlt+Pause, Close all windows.\nPause, Close the focused window by sending Alt+F4.\nNot assigned, Show desktop by sending Windows+D.\nNot assigned, Allows you to open the closingTools add-on settings dialog.\nYou can change the keyboard shortcut in input gestures, in the Close Tools section."
     },
     "HotkeysPlus": {
-      "description": "The HotkeysPlus add-on will add the following keyboard shortcuts to NVDA:\nPause key: close the active window, similar to the Alt+F4 command.\nControl+Pause: close the active tab, similar to the control+w command.\nCommand not assigned: close the active tab, similar to control+F4.\nAlt+Pause: close all windows.\nCommand not assigned: Show desktop, similar to the windows+d command.\nYou can change the keyboard shortcut in input gestures, in the Keyboard shortcuts Plus section."
+      "description": "The HotkeysPlus add-on will add the following keyboard shortcuts to NVDA:\nPause key: close the active window, similar to the Alt+F4 command.\nControl+Pause: close the active tab, similar to the control+w command.\nCommand not assigned: close the active tab, similar to control+F4.\nAlt+Pause: close all windows.\nCommand not assigned: Show desktop, similar to the windows+d command.\nYou can change the keyboard shortcut in input gestures, in the Keyboard shortcuts Plus section.",
+      "summary": "HotkeysPlus"
     },
     "read_insta_message": {
-      "description": "The ReadInstaMessage add-on allows you to read Instagram messages on the web.\nSimply enable the feature to automatically set system focus to focusable elements by pressing nvda+7, and you can disable it after finishing the conversation.\nYou can move between messages using b and shift+b, that is, move between buttons because a message appears.\nI created this add-on a long time ago, and now I’m sharing it with you after I saw that some people really needed it.\nThe add-on does not have settings or keyboard shortcuts.\nStarts working immediately after installation or switching on."
+      "description": "The ReadInstaMessage add-on allows you to read Instagram messages on the web.\nSimply enable the feature to automatically set system focus to focusable elements by pressing nvda+7, and you can disable it after finishing the conversation.\nYou can move between messages using b and shift+b, that is, move between buttons because a message appears.\nI created this add-on a long time ago, and now I’m sharing it with you after I saw that some people really needed it.\nThe add-on does not have settings or keyboard shortcuts.\nStarts working immediately after installation or switching on.",
+      "summary": "ReadInstaMessage"
     },
     "inputLayoutToggler": {
       "summary": "Input Layout Toggler",
@@ -2380,7 +2386,8 @@
       "description": "The ObjLocSound add-on shows the size and location of objects using stereo sound and pitch.\nWhen viewing window objects, NVDA will use stereo and pitch to indicate the coordinate location of the object's center point on the screen based on the object currently being viewed.\nKeyboard shortcut:\nEnable or disable sound effects for object location coordinates. The default keyboard shortcut is NVDA+L.\nPlay sound effects of the coordinates of the top left and bottom right corners of the current object, double tap will give detailed information. The default keyboard shortcut is NVDA+A.\nThe keyboard shortcut can be changed in input gestures, in the subsection Sound detection of object location."
     },
     "txtReader": {
-      "description": "The TxtReader add-on for NVDA is a program for reading text files without an interface.\nWhen you open a text file, the add-on copies its contents to memory and closes the file, allowing you to read it using keyboard shortcuts.\nThe content is sent to the reader so it can be read without being displayed on the screen.\nNVDA+Alt+F: Displays a dialog to open a file.\nNVDA+Alt+Down Arrow: Move to the next line of text.\nNVDA+Alt+Up Arrow: Move to the previous line of text.\nNVDA+Alt+space: Read the current line.\nNVDA+Alt+Home or End: Go to the beginning or end of the text.\nNVDA+Alt+Right Arrow: If multiple files were open, move to the next text in the list.\nNVDA+Alt+Left Arrow: If multiple files were open, move to the previous text in the list.\nNVDA+Alt+Backspace: Remove current text from the list.\nNVDA+Alt+T: Read file header.\nNVDA+Alt+C: Copy the current line to the clipboard.\nNVDA+Alt+L: If one or more files were opened previously, clears the list of texts.\nNVDA+Alt+G: Displays a dialog to jump to a specific line.\nNVDA+Alt+B: Displays a dialog for searching the current text.\nThe keyboard shortcut can be changed in input gestures, TXT Reader."
+      "description": "The TxtReader add-on for NVDA is a program for reading text files without an interface.\nWhen you open a text file, the add-on copies its contents to memory and closes the file, allowing you to read it using keyboard shortcuts.\nThe content is sent to the reader so it can be read without being displayed on the screen.\nNVDA+Alt+F: Displays a dialog to open a file.\nNVDA+Alt+Down Arrow: Move to the next line of text.\nNVDA+Alt+Up Arrow: Move to the previous line of text.\nNVDA+Alt+space: Read the current line.\nNVDA+Alt+Home or End: Go to the beginning or end of the text.\nNVDA+Alt+Right Arrow: If multiple files were open, move to the next text in the list.\nNVDA+Alt+Left Arrow: If multiple files were open, move to the previous text in the list.\nNVDA+Alt+Backspace: Remove current text from the list.\nNVDA+Alt+T: Read file header.\nNVDA+Alt+C: Copy the current line to the clipboard.\nNVDA+Alt+L: If one or more files were opened previously, clears the list of texts.\nNVDA+Alt+G: Displays a dialog to jump to a specific line.\nNVDA+Alt+B: Displays a dialog for searching the current text.\nThe keyboard shortcut can be changed in input gestures, TXT Reader.",
+      "summary": "TxtReader"
     },
     "Vscode-line-numbers": {
       "description": "The VsCodeLineNumbers add-on makes it easy to find out about the current line in VsCode.\nYou can also listen to which column (which character in the line) has the cursor focus.\nYou can obtain this information using the following keyboard shortcuts:\nNVDA+SHIFT+W: report column (character number in line).\nNVDA+W: report line number.\nIf desired, you can change the keyboard shortcut in the NVDA menu, Options, Input Gestures, VsCode Line Numbers."
@@ -2397,7 +2404,8 @@
       "description": "DisplayAddonsChangelog add-on to display information about changes when updating add-ons when installing them.\nIf the add-on developer has included a changelog.txt file, its contents will be displayed during installation if you are upgrading from a previous version.\nThe add-on has no settings and starts working immediately after installation or activation.\nAdd-on developers only need to include a file called changelog.txt with this information.\nIt is advisable that the file be encoded in UTF-8 and not be too long to be viewed in the dialog box.\nThere may be translations of the changelog.txt file in the corresponding documentation language folders: the one that matches the NVDA language will be displayed."
     },
     "unicornNVDA": {
-      "description": "UnicornNVDA is an add-on that facilitates communication between NVDA and the Unicorn external library.\nThe add-on enables information exchange between local and remote NVDA instances, such as braille/speech input as well as data output.\nThe add-on provides an easy way to use the UnicornDVC library."
+      "description": "UnicornNVDA is an add-on that facilitates communication between NVDA and the Unicorn external library.\nThe add-on enables information exchange between local and remote NVDA instances, such as braille/speech input as well as data output.\nThe add-on provides an easy way to use the UnicornDVC library.",
+      "summary": "UnicornNVDA"
     },
     "ifInterpreters": {
       "summary": "If Interpreters",
@@ -2408,7 +2416,8 @@
       "description": "CurrencyConverter add-on for converting currencies using Google server:\nKeyboard shortcut NVDA+Alt+C.\nThe keyboard shortcut can be changed in input gestures, in the Currency Converter subsection for the shortcut to open the currency converter dialog.\nAn Internet connection is required to operate."
     },
     "ExcelPlus": {
-      "description": "The ExcelPlus add-on adds the following features when using Microsoft Excel:\nSay the address of the current cell – Alt+W;\nSay the column heading of the current cell – Alt+E;\nSay the row title of the current cell – Alt+R.\nYou can change the command in input gestures, in the ExcelPlus section.\nYou can declare a cell as a header using standard NVDA commands:\nColumn heading – NVDA+Shift+C;\nThe line header is NVDA+Shift+R."
+      "description": "The ExcelPlus add-on adds the following features when using Microsoft Excel:\nSay the address of the current cell – Alt+W;\nSay the column heading of the current cell – Alt+E;\nSay the row title of the current cell – Alt+R.\nYou can change the command in input gestures, in the ExcelPlus section.\nYou can declare a cell as a header using standard NVDA commands:\nColumn heading – NVDA+Shift+C;\nThe line header is NVDA+Shift+R.",
+      "summary": "ExcelPlus"
     },
     "Biblos": {
       "summary": "Biblos (Biblos Braille Text Processor)",
@@ -2419,7 +2428,8 @@
       "description": "The UltraEloquence add-on is an eloquence synthesizer for NVDA with support for automatic language switching.\nThis add-on also includes Chinese, Japanese and Korean languages.\nPlease note that this is a modification."
     },
     "FirefoxSupport": {
-      "description": "The FirefoxSupport add-on adds enhanced support for the Mozilla Firefox web browser.\nRead the status bar and copy the status bar to the clipboard.\nGo to the tab bar.\nGo to the address bar, as well as read and copy the address bar."
+      "description": "The FirefoxSupport add-on adds enhanced support for the Mozilla Firefox web browser.\nRead the status bar and copy the status bar to the clipboard.\nGo to the tab bar.\nGo to the address bar, as well as read and copy the address bar.",
+      "summary": "FirefoxSupport"
     },
     "RHVoicePremium": {
       "summary": "RHVoice",
@@ -2438,13 +2448,16 @@
       "description": "The TeamTalk add-on improves the availability of the program of the same name as follows:\nGives names to channel messages and input edit fields on the main screen.\nNames the toolbar items for those viewing it using the navigator.\nProvides the Control+Shift+S keyboard shortcut to check the status of voice activation, push-to-talk, video, audio save, and more.\nThe names of controls in the Banned Users dialog and other places where buttons for adding and deleting lists are located have been improved.\nSilences the progress indicator showing real-time microphone volume.\nPrevents NVDA from displaying a 1 of 1 message for all channel tree elements."
     },
     "dutchBiblicalStudies": {
-      "description": "The DutchBiblicalStudies add-on adds the grc-international-nl braille table.\nWith this braille chart you can view resources for learning ancient biblical languages ​​for Dutch users.\nNote: The add-on is under development, so the developer has added an unfinished table that does not contain anything yet.\nThe add-on does not have settings or keyboard shortcuts."
+      "description": "The DutchBiblicalStudies add-on adds the grc-international-nl braille table.\nWith this braille chart you can view resources for learning ancient biblical languages ​​for Dutch users.\nNote: The add-on is under development, so the developer has added an unfinished table that does not contain anything yet.\nThe add-on does not have settings or keyboard shortcuts.",
+      "summary": "DutchBiblicalStudies"
     },
     "JGT": {
-      "description": "The JGT (Japanese Games Translator) add-on allows you to translate text during gameplay from Japanese to English in some Japanese audio games.\nJGT is focused on two things:\nFirstly, to give those new to Japanese games the easiest experience possible to start playing and enjoying them.\nThat is, it requires less software to install and configure than other solutions, and gives you step-by-step instructions to get started.\nSecond, to provide more automatic and seamless translation than what other toolkits currently support.\nFor example, with auto-translation of the last words turned on, you can navigate through the menu and immediately hear the English version of each menu item without pressing an additional hotkey.\nTranslator's note: You can view the supported list of Japanese games in the detailed user manual."
+      "description": "The JGT (Japanese Games Translator) add-on allows you to translate text during gameplay from Japanese to English in some Japanese audio games.\nJGT is focused on two things:\nFirstly, to give those new to Japanese games the easiest experience possible to start playing and enjoying them.\nThat is, it requires less software to install and configure than other solutions, and gives you step-by-step instructions to get started.\nSecond, to provide more automatic and seamless translation than what other toolkits currently support.\nFor example, with auto-translation of the last words turned on, you can navigate through the menu and immediately hear the English version of each menu item without pressing an additional hotkey.\nTranslator's note: You can view the supported list of Japanese games in the detailed user manual.",
+      "summary": "JGT"
     },
     "objEnhancer": {
-      "description": "The Object Enhancer add-on allows you to change the way NVDA objects appear on the screen using an intuitive interface.\nIt can be used to change the label of an object, but depending on how you use it, it has the functionality to change almost any property of an object.\nKeyboard shortcut:\nCopy the base64 encoded SHA1 hash of the navigator object bitmap to the clipboard - NVDA+control+alt+h.\nSetting the properties of the navigator object - NVDA+control+shift+tab.\nOpen the Object Enhancer Definitions dialog box - NVDA+control+shift+tab.\nYou can change the keyboard shortcut in input gestures, in the Object Amplifier subsection."
+      "description": "The Object Enhancer add-on allows you to change the way NVDA objects appear on the screen using an intuitive interface.\nIt can be used to change the label of an object, but depending on how you use it, it has the functionality to change almost any property of an object.\nKeyboard shortcut:\nCopy the base64 encoded SHA1 hash of the navigator object bitmap to the clipboard - NVDA+control+alt+h.\nSetting the properties of the navigator object - NVDA+control+shift+tab.\nOpen the Object Enhancer Definitions dialog box - NVDA+control+shift+tab.\nYou can change the keyboard shortcut in input gestures, in the Object Amplifier subsection.",
+      "summary": "ObjEnhancer"
     },
     "objInspector": {
       "description": "The ObjInspector add-on shows a list of all objects visible in the active window.\nIt also shows information about them that is useful for add-on developers.\nObjects can be filtered and added to favorites to make them easier to find.\nKeyboard shortcut:\nShow a list of objects in the active window - NVDA+F4.\nYou can change the command in input gestures, in the objInspector subsection."
@@ -2469,7 +2482,8 @@
       "description": "The RealTesseractOCR add-on recognizes text from images using tesseract machine learning.\nList of hotkeys:\nNVDA+ALT+I: change recognition language.\nNVDA+I: text recognition on images. Copies the text to the clipboard and speaks it.\nThe keyboard shortcut can be changed in input gestures, in the realTesseractOCR subsection.\nBefore starting work, you must independently specify the Path to the installed Tesseract-OCR in the NVDA menu, Submenu Options, Settings, Categories: RealTesseractOCR."
     },
     "objsounds": {
-      "description": "The ObjSounds add-on plays sounds based on objects when you move towards them.\nYou can turn sounds on or off using the keyboard shortcut NVDA+Shift+Delete.\nYou can change the command in input gestures, section Tools, Turn object sounds on or off. \nThe addition is a sound theme.\nPlease note that this is not an official version, as the developer stopped supporting this add-on a long time ago."
+      "description": "The ObjSounds add-on plays sounds based on objects when you move towards them.\nYou can turn sounds on or off using the keyboard shortcut NVDA+Shift+Delete.\nYou can change the command in input gestures, section Tools, Turn object sounds on or off. \nThe addition is a sound theme.\nPlease note that this is not an official version, as the developer stopped supporting this add-on a long time ago.",
+      "summary": "ObjSounds"
     },
     "NV-Braille2Speech": {
       "summary": "NV Braille2Speech",
@@ -2484,7 +2498,8 @@
       "description": "The FixExplorer add-on fixes the problem with focus freezing when opening the standard Windows Explorer file manager.\nIf you do not have such a problem, then you do not need to install this add-on.\nThe add-on has no settings or keyboard shortcuts.\nStarts working immediately after installation or switching on."
     },
     "keyboardTrainer": {
-      "description": "The KeyboardTrainer add-on will help you master typing on a keyboard using the ten-finger method.\nThe simulator supports only English and Ukrainian languages.\nYou can activate the simulator using the combination NVDA+Shift+K.\nYou can also disable it using the same combination. The add-on is actively being developed, so expect updates with even more features."
+      "description": "The KeyboardTrainer add-on will help you master typing on a keyboard using the ten-finger method.\nThe simulator supports only English and Ukrainian languages.\nYou can activate the simulator using the combination NVDA+Shift+K.\nYou can also disable it using the same combination. The add-on is actively being developed, so expect updates with even more features.",
+      "summary": "KeyboardTrainer"
     },
     "char_silencer": {
       "summary": "Char Silencer",
@@ -2495,7 +2510,8 @@
       "description": "The AlmaanyEnglishDictionaries add-on will help you find out the meaning of words or phrases on almaany.com.\n\nTo do this, the add-on uses many English-other language dictionaries on the site.\n\nIf you didn't find your language among them, I'm sorry, as these are all available dictionaries and we tried to use them.\n\nAn Internet connection is required to use this add-on.\nAttention: most of the dictionaries used are bilingual, that is, for example, an English-French dictionary translates from English to French and from French to English.\nThis add-on does not have a default keyboard shortcut. They must be assigned independently in input gestures in the section of the same name."
     },
     "TalkBackSoundEffectForNVDA": {
-      "description": "The TalkBackSoundEffectForNVDA add-on adds a sound theme with sounds from the TalkBack screen reader.\nKeyboard shortcuts - NVDA +Alt+V.\nPressing once toggles between turning object sounds on and off, and double-pressing toggles between pronunciation and turning off object types.\nThe keyboard shortcut can be changed in input gestures, under TalkBack Sound Theme."
+      "description": "The TalkBackSoundEffectForNVDA add-on adds a sound theme with sounds from the TalkBack screen reader.\nKeyboard shortcuts - NVDA +Alt+V.\nPressing once toggles between turning object sounds on and off, and double-pressing toggles between pronunciation and turning off object types.\nThe keyboard shortcut can be changed in input gestures, under TalkBack Sound Theme.",
+      "summary": "TalkBackSoundEffectForNVDA"
     },
     "SilentTyping": {
       "summary": "SilentTyping",
@@ -2518,17 +2534,20 @@
       "description": "dAddition CopyAppend for adding selected text to the clipboard.\nAllows you to add new text to existing text on the clipboard without replacing it.\nPress Control plus shift plus c to add text to the clipboard.\nNVDA plus shift plus c to clear clipboard data (Warning: the command to clear the clipboard does not work)."
     },
     "copyLastSpeech": {
-      "description": "The CopyLastSpeech add-on adds functions for copying the last NVDA speech message to the clipboard, as well as adding speech messages to the clipboard by accumulation.\nAdditionally, if a link was spoken or copied to the clipboard, it can be opened in your default browser.\nKeyboard shortcut:\nNVDA+X - Copy the last NVDA voice message to the clipboard.\nNVDA+D - add the latest voice message to the clipboard.\nNVDA+G - Open in the default browser the URL that was last listened to or copied to the clipboard.\nYou can also change these commands in the Miscellaneous category in the NVDA Options, Input Gestures dialog box."
+      "description": "The CopyLastSpeech add-on adds functions for copying the last NVDA speech message to the clipboard, as well as adding speech messages to the clipboard by accumulation.\nAdditionally, if a link was spoken or copied to the clipboard, it can be opened in your default browser.\nKeyboard shortcut:\nNVDA+X - Copy the last NVDA voice message to the clipboard.\nNVDA+D - add the latest voice message to the clipboard.\nNVDA+G - Open in the default browser the URL that was last listened to or copied to the clipboard.\nYou can also change these commands in the Miscellaneous category in the NVDA Options, Input Gestures dialog box.",
+      "summary": "CopyLastSpeech"
     },
     "NVDATranslate": {
-      "description": "The Translate add-on uses the DeepL API to translate spoken text into the desired language on the fly.\nThis add-on requires a DeepL key and an Internet connection.\nThe keyboard shortcuts are described in the add-on reference guide.\nYou can change commands in input gestures, section Translation using DeepL.\nThe presented add-on is a modification of the Translate add-on, as well as the TranslateEnhancement add-on."
+      "description": "The Translate add-on uses the DeepL API to translate spoken text into the desired language on the fly.\nThis add-on requires a DeepL key and an Internet connection.\nThe keyboard shortcuts are described in the add-on reference guide.\nYou can change commands in input gestures, section Translation using DeepL.\nThe presented add-on is a modification of the Translate add-on, as well as the TranslateEnhancement add-on.",
+      "summary": "Translate"
     },
     "reportLastProgressBarValue": {
       "summary": "Report Last Progress Bar Value",
       "description": "The ReportLastProgressBarValue add-on will tell you the current progress bar value whenever you need it after pressing a keyboard shortcut.\nFor example, you have completely disabled automatic notification (Speaking progress bars), but you still need to know the current indicator percentage.\nKeyboard shortcut:\nNVDA+Control+U, which can be changed in input gestures, in the Miscellaneous subsection, for the shortcut Tells the current value of the progress bar."
     },
     "OpenContextMenu": {
-      "description": "The OpenContextMenu add-on adds the ability to open a context menu using one of several suggested keyboard shortcuts.\nYou can select a key combination in the add-on settings, which are located in the NVDA parameters, in the Open context menu tab.\nBy default, the key combination Ctrl+Right Shift is used to open the context menu.\nThis add-on will be very useful for those who do not have a separate key to open the context menu on their keyboard.\nKeyboard shortcut to open the context menu:\nControl+Right Shift.\nRight Control.\nControl+Right Control.\nAlt+Right Control.\nWindows+Right Control.\nWindows+Left Shift.\nWindows+Right Shift."
+      "description": "The OpenContextMenu add-on adds the ability to open a context menu using one of several suggested keyboard shortcuts.\nYou can select a key combination in the add-on settings, which are located in the NVDA parameters, in the Open context menu tab.\nBy default, the key combination Ctrl+Right Shift is used to open the context menu.\nThis add-on will be very useful for those who do not have a separate key to open the context menu on their keyboard.\nKeyboard shortcut to open the context menu:\nControl+Right Shift.\nRight Control.\nControl+Right Control.\nAlt+Right Control.\nWindows+Right Control.\nWindows+Left Shift.\nWindows+Right Shift.",
+      "summary": "OpenContextMenu"
     },
     "customSpeakTypedCharacters": {
       "summary": "Custom Speak Typed Characters",
@@ -2572,23 +2591,27 @@
       "description": "The SightFreeTalon add-on creates a command and control server in NVDA that can receive socket messages from Talon.\nIt allows you to toggle multiple settings in NVDA and execute multiple commands.\nSpecifically, it can disable speech interruption for typed characters and speak out the words/characters you've typed so that the audio echo that comes back when the Talon types your words is not interrupted by NVDA.\nThis will temporarily disable the interrupt only during dictation and return it once the dictation is complete.\nThis will allow you to keep your normal NVDA settings while dictating while still typing with Talon."
     },
     "qqmusicUWPEnhancement": {
-      "description": "The QqMusicUWPEnhancement add-on adds accessibility support for the QQ Music UWP app from the Windows Store.\nThe plugin mainly implements three types of functions, optimizing interface accessibility, quickly focusing on certain controls and performing certain operations, namely:\nAdding labels to some controls.\nOptimized display of some list items.\nAdding automatic reading of lyrics and song titles.\nAdd shortcut keys to quickly focus on the search box and search results.\nAdd fast forward, rewind, play and pause keys.\nAll keyboard shortcuts are described in the help for the add-on.\nThe developer has not prepared a localization add-on, so the input gestures have shortcuts in Chinese."
+      "description": "The QqMusicUWPEnhancement add-on adds accessibility support for the QQ Music UWP app from the Windows Store.\nThe plugin mainly implements three types of functions, optimizing interface accessibility, quickly focusing on certain controls and performing certain operations, namely:\nAdding labels to some controls.\nOptimized display of some list items.\nAdding automatic reading of lyrics and song titles.\nAdd shortcut keys to quickly focus on the search box and search results.\nAdd fast forward, rewind, play and pause keys.\nAll keyboard shortcuts are described in the help for the add-on.\nThe developer has not prepared a localization add-on, so the input gestures have shortcuts in Chinese.",
+      "summary": "QqMusicUWPEnhancement"
     },
     "promemoria": {
-      "description": "The ProMemoria add-on notifies you with a message when you start NVDA if there are reminders for the current day.\nA reminder will appear every time you start NVDA.\nWhen you select a date for a reminder, you can only select the day and month. It is impossible to select the year, as well as the exact time.\nYou must manually assign a shortcut from the input gestures to open the reminder dialog box, and then set reminders from the dialog box.\nThe command shortcut (Show reminder dialog) is located in input gestures, subsection Miscellaneous."
+      "description": "The ProMemoria add-on notifies you with a message when you start NVDA if there are reminders for the current day.\nA reminder will appear every time you start NVDA.\nWhen you select a date for a reminder, you can only select the day and month. It is impossible to select the year, as well as the exact time.\nYou must manually assign a shortcut from the input gestures to open the reminder dialog box, and then set reminders from the dialog box.\nThe command shortcut (Show reminder dialog) is located in input gestures, subsection Miscellaneous.",
+      "summary": "ProMemoria"
     },
     "KoreanSpellChecker": {
       "description": "The KoreanSpellChecker add-on adds spell checking functionality to NVDA for the Korean language.\nKeyboard shortcut:\nNVDA+F8 - Check spelling.\nThe keyboard shortcut can be changed in input gestures.\nThe add-on uses an external service, so it requires an Internet connection to work."
     },
     "KoreanHelper": {
-      "description": "The KoreanHelper add-on is a Hangul helper.\nThis is an optional feature that helps you input and output Hangul data, such as adjusting Hangul input settings.\nHangul is the modern Korean alphabet."
+      "description": "The KoreanHelper add-on is a Hangul helper.\nThis is an optional feature that helps you input and output Hangul data, such as adjusting Hangul input settings.\nHangul is the modern Korean alphabet.",
+      "summary": "KoreanHelper"
     },
     "swamp": {
       "summary": "Swamp",
       "description": "The Swamp add-on improves interaction with the Swamp game of the same name.\nKeyboard shortcut:\nSpace - insert a command.\nNVDA+V - Say the current command.\nNVDA+A - Autofill switch."
     },
     "qqPatch": {
-      "description": "The QQPatch add-on integrates the QQ Input Field patch and the QQ At patch to resolve the conflict between the two patches.\nResolved an issue where the QQ input window could not use the cursor keys to browse and the list of group members would not be read out loud after typing Chinese, as well as support for a list of emojis after typing \"/\" (slash).\nIntegration of QQ Input Box and At patch to solve the problem of conflict when installing two patches at the same time.\nNVDA can read the list of @ group members by pressing the up and down cursor keys after typing @ in a QQ group chat. And after entering /, it can read the abbreviation of the emoji name, and you can directly select the emoji using the up and down cursor keys.\nAlso solved the problem that after entering Chinese, when you want to read the text in the edit field with the cursor, you can no longer read it, and you can only shift+tab to move the focus manually to read it again."
+      "description": "The QQPatch add-on integrates the QQ Input Field patch and the QQ At patch to resolve the conflict between the two patches.\nResolved an issue where the QQ input window could not use the cursor keys to browse and the list of group members would not be read out loud after typing Chinese, as well as support for a list of emojis after typing \"/\" (slash).\nIntegration of QQ Input Box and At patch to solve the problem of conflict when installing two patches at the same time.\nNVDA can read the list of @ group members by pressing the up and down cursor keys after typing @ in a QQ group chat. And after entering /, it can read the abbreviation of the emoji name, and you can directly select the emoji using the up and down cursor keys.\nAlso solved the problem that after entering Chinese, when you want to read the text in the edit field with the cursor, you can no longer read it, and you can only shift+tab to move the focus manually to read it again.",
+      "summary": "QQPatch"
     },
     "xtouchEditor": {
       "summary": "X Touch Editor",
@@ -2599,7 +2622,8 @@
       "description": "The Sibiac add-on allows you to work with predefined graphical and fixed dialogs using only the mouse.\nIMPORTANT: Please also install the sibiac_ocr add-on, it contains the necessary OCR library.\nAll keyboard shortcuts are provided by SIBIAC itself, so normal NVDA rules and settings are ignored.\nYou can read about the features of the add-on in the attached help."
     },
     "nvdaKeyMode": {
-      "description": "The NVDAKeyMode add-on allows you to use any key or key combination as a delayed NVDA key.\nFor example, imagine that you need to press the key combination NVDA+control+F, where the NVDA key is the Insert key.\nIf you assign Insert in this add-on, then through the Input Gestures dialog, you can press Insert, and then, in absolute comfort, Control+F.\nAt this point, the Incert key will be (silently) released.\nCaps lock and Num lock keys are also supported (but not recommended).\nTo designate a key that you usually use as an NVDA key, first uncheck it in the NVDA menu, Settings, Options, Keyboard.\nATTENTION! When you select a key for this add-on, please ensure that your physical keyboard has a regular NVDA key at all times.\nFor example, use Caps lock as a regular NVDA key (check this in NVDA Options, Keyboard) and Incert as an additional key.\nThis way, hopefully, you will never encounter a situation where you are unable to execute keyboard commands.\nYou can assign a key or key combination in input gestures, in the NVDAKeyMode subsection."
+      "description": "The NVDAKeyMode add-on allows you to use any key or key combination as a delayed NVDA key.\nFor example, imagine that you need to press the key combination NVDA+control+F, where the NVDA key is the Insert key.\nIf you assign Insert in this add-on, then through the Input Gestures dialog, you can press Insert, and then, in absolute comfort, Control+F.\nAt this point, the Incert key will be (silently) released.\nCaps lock and Num lock keys are also supported (but not recommended).\nTo designate a key that you usually use as an NVDA key, first uncheck it in the NVDA menu, Settings, Options, Keyboard.\nATTENTION! When you select a key for this add-on, please ensure that your physical keyboard has a regular NVDA key at all times.\nFor example, use Caps lock as a regular NVDA key (check this in NVDA Options, Keyboard) and Incert as an additional key.\nThis way, hopefully, you will never encounter a situation where you are unable to execute keyboard commands.\nYou can assign a key or key combination in input gestures, in the NVDAKeyMode subsection.",
+      "summary": "NVDAKeyMode"
     },
     "nordvpn": {
       "description": "The NordVpn add-on increases the availability of the NordVPN client of the same name by signing many elements.\nThe add-on does not have keyboard shortcuts or settings.\nIt starts working immediately after installation or switching on."
@@ -2639,10 +2663,12 @@
       "description": "A simple NetworkStrenght add-on to determine the strength of a wireless network.\nThe keyboard shortcut NVDA+Control+N will tell you the wireless network strength on your device.\nChanging the keyboard shortcuts in the add-on is not implemented."
     },
     "wlmail": {
-      "description": "The WLMail add-on improves the accessibility of the WLMail email client.\nThe add-on reads unread messages and messages with attachments.\nIt adds various commands such as reading headers and autocompletion of addresses.\nA list of commands can be obtained using the keyboard shortcut Control+NVDA+H."
+      "description": "The WLMail add-on improves the accessibility of the WLMail email client.\nThe add-on reads unread messages and messages with attachments.\nIt adds various commands such as reading headers and autocompletion of addresses.\nA list of commands can be obtained using the keyboard shortcut Control+NVDA+H.",
+      "summary": "WlMail"
     },
     "say clipBoard": {
-      "description": "The SayClipBoard add-on adds functionality to read text on the Windows clipboard.\nPress the command NVDA+C:\nRead text from the clipboard once.\nOpen text from the clipboard twice in the virtual preview window.\nYou can change the command in input gestures, subsection System status, Reports text to the Windows clipboard."
+      "description": "The SayClipBoard add-on adds functionality to read text on the Windows clipboard.\nPress the command NVDA+C:\nRead text from the clipboard once.\nOpen text from the clipboard twice in the virtual preview window.\nYou can change the command in input gestures, subsection System status, Reports text to the Windows clipboard.",
+      "summary": "SayClipBoard"
     },
     "CopyText": {
       "summary": "CopyText",
@@ -2656,7 +2682,8 @@
       "description": "The NvdaChatGPT add-on provides access to chatGPT. via key bindings, so you can ask for the meaning of any words or ask any questions.\n\nEspecially useful for asking difficult words you don't know or asking simple programming questions.\n\nYou need an api key (it's free and paid), but I think it's worth the time or money."
     },
     "voiceOver": {
-      "description": "The VoiceOver add-on is a sound theme for NVDA with Voice Over sounds.\nThe add-on plays sounds based on object types as you move around them.\nNVDA+Alt+V Pressing once toggles between enabling and disabling object sounds, and double-pressing toggles between reading and disabling object types.\nThe command can be changed in input gestures, in the subsection Sound theme voice over."
+      "description": "The VoiceOver add-on is a sound theme for NVDA with Voice Over sounds.\nThe add-on plays sounds based on object types as you move around them.\nNVDA+Alt+V Pressing once toggles between enabling and disabling object sounds, and double-pressing toggles between reading and disabling object types.\nThe command can be changed in input gestures, in the subsection Sound theme voice over.",
+      "summary": "VoiceOver"
     },
     "Eloq47": {
       "summary": "Eloq47",
@@ -2678,14 +2705,16 @@
       "description": "The GBMRadioStreaming add-on allows you to easily listen to gbm streaming radio from your browser using the keyboard shortcuts NVDA+SHIFT+G.\nAfter pressing the key combination, the default browser will open, with a page for listening to the radio.\nThe keyboard shortcut can be changed in the input gestures, under GBM Streaming Radio, Shortcut for listening to GBM radio streaming from a web browser.\nEnjoy listening to our streaming radio!\nGreetings from the Gelegar Bangsa Mandiri (GBM) team."
     },
     "ScreenReaderSounds": {
-      "description": "The ScreenReaderSounds add-on adds sound themes from Apple VoiceOver, Google TalkBack 5.0.7, Google TalkBack 6+.\nTo start or stop the add-on, press the key combination NVDA+Alt+O.\nTo switch between sound themes, press: NVDA+Alt+Z or NVDA+Alt+X.\nYou must restart NVDA for the changes to take effect."
+      "description": "The ScreenReaderSounds add-on adds sound themes from Apple VoiceOver, Google TalkBack 5.0.7, Google TalkBack 6+.\nTo start or stop the add-on, press the key combination NVDA+Alt+O.\nTo switch between sound themes, press: NVDA+Alt+Z or NVDA+Alt+X.\nYou must restart NVDA for the changes to take effect.",
+      "summary": "ScreenReaderSounds"
     },
     "espeakWitMbrola": {
       "summary": "eSpeak with MBROLA",
       "description": "The ESpeakWitMbrola addon is the old ESpeak speech synthesizer with support for Mbrola voices, ported into an addon for NVDA."
     },
     "URLPlayer": {
-      "description": "The URLPlayer add-on is a simple player for playing Internet radio via a stream link.\nControl keys can be viewed and configured in the NVDA menu - Options, Input Gestures, URLPlayer.\nThe settings are located in the NVDA menu, Options, Settings, URLPlayer."
+      "description": "The URLPlayer add-on is a simple player for playing Internet radio via a stream link.\nControl keys can be viewed and configured in the NVDA menu - Options, Input Gestures, URLPlayer.\nThe settings are located in the NVDA menu, Options, Settings, URLPlayer.",
+      "summary": "URLPlayer"
     },
     "SpellingErrorSound": {
       "summary": "SpellingErrorSound",
@@ -2719,7 +2748,8 @@
       "description": "The PressApplication add-on can simulate pressing the Application key using the NVDA+' (apostrophe) keyboard shortcut.\nFor those NVDA users who do not have an Application key on their keyboard.\nOf course, you can manually specify the key that calls this function in the input gestures dialog, subsection Analog system keys, Simulate pressing the Application key."
     },
     "nvdaHelper": {
-      "description": "The NvdaHelper add-on is a simple NVDA helper for learning Arabic letters and remembering their location on the keyboard.\nThis add-on adds built-in Arabic pronunciation help to nvda when the keyboard language is Arabic.\nThis happens before activating assistance using the well-known keyboard shortcut: NVDA+1."
+      "description": "The NvdaHelper add-on is a simple NVDA helper for learning Arabic letters and remembering their location on the keyboard.\nThis add-on adds built-in Arabic pronunciation help to nvda when the keyboard language is Arabic.\nThis happens before activating assistance using the well-known keyboard shortcut: NVDA+1.",
+      "summary": "NvdaHelper"
     },
     "Note diary for NVDA": {
       "description": "The NoteDiaryForNVDA add-on allows you to quickly and efficiently save notes.\nRecord, open, save and delete notes with just a few keystrokes.\nInitially, there is no keyboard shortcut assigned to open the Notes Diary window, but you can assign one in Settings, Input Gestures in the Notes Diary category.\nYou can also access it through the NVDA menu, submenu Tools, Notes Diary."
@@ -2729,7 +2759,8 @@
       "description": "The DirectLink add-on converts Dropbox, Google Drive or OneDrive links into direct links and opens Whatsapp and Telegram chats with a given number.\nA direct link allows you to get the famous save dialog directly when you open the file in the browser, without having to struggle with the hosting company's download page and searching for a download link.\nYou can also use the direct link to stream the file or view it in some programs, such as media players (if they support the URL).\nLikewise, if WhatsApp or Telegram are common in your country, then instead of creating a new contact every time you need to chat with someone, be it a customer or tech support, you can simply select a number or copy it and start chatting immediately.\nMoreover, you can share the link of your own WhatsApp number if people usually need to contact you if you work as a freelancer."
     },
     "codefactory-py3": {
-      "description": "The Code Factory add-on is a driver for speech synthesizers from Code Factory.\nThe driver has an interface through which you can install Eloquence and Vocalizer synthesizers.\nIn order to use the driver and voices in perpetual mode, you must purchase a license for this product."
+      "description": "The Code Factory add-on is a driver for speech synthesizers from Code Factory.\nThe driver has an interface through which you can install Eloquence and Vocalizer synthesizers.\nIn order to use the driver and voices in perpetual mode, you must purchase a license for this product.",
+      "summary": "CodeFactory"
     },
     "hijriDate": {
       "summary": "HijriDate",
@@ -2748,16 +2779,20 @@
       "description": "The UnicodeAscii add-on aims to solve the problem with mathematical alphanumeric characters, which, among other things, are now used for decorative purposes because they look cool on social networks, in addition to being used for their original purpose.\nThe add-on converts the characters passed to it into a near-ASCII representation, so it can be used to transliterate any other characters.\nUnfortunately, the results will not always be perfect and good because sometimes decorative symbols work on the resemblance to the original symbol rather than on the actual meaning.\nPress NVDA+Control+N to decode text from the clipboard or selected text (in that search order), double-click to copy the result to the clipboard.\nPress Control+Shift+NVDA+N to decode text from the clipboard or selected text (in the same order) and add them as a pattern and replacement to the default dictionary (useful if you find a string of text frequently).\nThese keyboard shortcuts can be changed in the input gestures dialog, under the unicodeAscii category."
     },
     "ZExplorer": {
-      "description": "The ZExplorer add-on allows you to correctly retrieve the contents of the status bar.\nTeam:\nNVDA+End - Ddesktop keyboard layout.\nNVDA+Shift+End - Laptop keyboard layout.\nA single press reads the status bar of the current application and moves the navigator to it.\nWhen double-clicked, spells out the information.\nWhen pressed three times, copies the status bar to the clipboard.\nIf the status bar is not found, you will hear a message indicating this."
+      "description": "The ZExplorer add-on allows you to correctly retrieve the contents of the status bar.\nTeam:\nNVDA+End - Ddesktop keyboard layout.\nNVDA+Shift+End - Laptop keyboard layout.\nA single press reads the status bar of the current application and moves the navigator to it.\nWhen double-clicked, spells out the information.\nWhen pressed three times, copies the status bar to the clipboard.\nIf the status bar is not found, you will hear a message indicating this.",
+      "summary": "ZExplorer"
     },
     "AirExplorer": {
-      "description": "The AirExplorer add-on adds various NVDA improvements to the Air Explorer cloud disk management program of the same name.\nThe add-on supports AirExplorer version 5.0 and higher.\nKeyboard commands:\nOpen the accounts panel: Control + Shift + C.\nOpen the options panel: Control + Shift + O.\nFind out the status of the latest downloads or downloads depending on their position: Control + numbers from 1 to 9.\nGo to the next of 4 possible elements: Page down.\nGo to the previous of 4 possible elements: Page up.\nCommands available when the toolbar is focused:\nS: Report available space.\nN: Create a new folder.\nZ: download as zip.\nMoving between the tab bar and the file list:\nUsing the page forward and backward we will scroll between the 4 elements while we are on the active cloud tab.\nThese elements are the tab bar, tree view, toolbar, and file list.\nWhen you reach the beginning or end of the list, the addition will make a sound.\nWith the Tab and Shift Tab keys we usually scroll between items, the above commands are mainly for navigating between the most frequently used objects.\nProgram commands:\nClose current tab: Control + w.\nGo to next tab: Control + Tab.\nGo to previous tab: Control + shift + Tab.\nThe keyboard shortcut can be changed in Input Gestures."
+      "description": "The AirExplorer add-on adds various NVDA improvements to the Air Explorer cloud disk management program of the same name.\nThe add-on supports AirExplorer version 5.0 and higher.\nKeyboard commands:\nOpen the accounts panel: Control + Shift + C.\nOpen the options panel: Control + Shift + O.\nFind out the status of the latest downloads or downloads depending on their position: Control + numbers from 1 to 9.\nGo to the next of 4 possible elements: Page down.\nGo to the previous of 4 possible elements: Page up.\nCommands available when the toolbar is focused:\nS: Report available space.\nN: Create a new folder.\nZ: download as zip.\nMoving between the tab bar and the file list:\nUsing the page forward and backward we will scroll between the 4 elements while we are on the active cloud tab.\nThese elements are the tab bar, tree view, toolbar, and file list.\nWhen you reach the beginning or end of the list, the addition will make a sound.\nWith the Tab and Shift Tab keys we usually scroll between items, the above commands are mainly for navigating between the most frequently used objects.\nProgram commands:\nClose current tab: Control + w.\nGo to next tab: Control + Tab.\nGo to previous tab: Control + shift + Tab.\nThe keyboard shortcut can be changed in Input Gestures.",
+      "summary": "AirExplorer"
     },
     "PowerRequest": {
-      "description": "The PowerRequest add-on prevents the splash screen (screensaver) from appearing when the “Read all” mode is active.\nThe add-on has no settings or keyboard shortcuts and starts working immediately after installation or activation."
+      "description": "The PowerRequest add-on prevents the splash screen (screensaver) from appearing when the “Read all” mode is active.\nThe add-on has no settings or keyboard shortcuts and starts working immediately after installation or activation.",
+      "summary": "PowerRequest"
     },
     "FonixTalk": {
-      "description": "The FonixTalk add-on is FonixTalk speech synthesizers for NVDA.\nAfter installing this add-on, DECtalk 5.1 will be available in the synthesizer selection list “NVDA+Control+S”, and the following list of voices will be available in the speech settings “NVDA+Control+V”:\nPerfect Paul.\nBeautiful Betty (Beautiful Betty).\nHuge Harry (Huge Harry).\nFrail Frank (Fragile Frank).\nDoctor Dennis (Doctor Dennis).\nKit The Kid.\nUppity Ursula (Restless Ursula).\nRough Rita (Rough Rita).\nWhispering Wendy."
+      "description": "The FonixTalk add-on is FonixTalk speech synthesizers for NVDA.\nAfter installing this add-on, DECtalk 5.1 will be available in the synthesizer selection list “NVDA+Control+S”, and the following list of voices will be available in the speech settings “NVDA+Control+V”:\nPerfect Paul.\nBeautiful Betty (Beautiful Betty).\nHuge Harry (Huge Harry).\nFrail Frank (Fragile Frank).\nDoctor Dennis (Doctor Dennis).\nKit The Kid.\nUppity Ursula (Restless Ursula).\nRough Rita (Rough Rita).\nWhispering Wendy.",
+      "summary": "FonixTalk"
     },
     "CaretBeep": {
       "summary": "CaretBeep",
@@ -2768,14 +2803,16 @@
       "description": "The ShowAllSysTrayIcons add-on makes changes to the registry to show all system tray icons in Windows 11.\nAfter installation, pressing the key combination Control+Shift+Alt+NVDA+T will show all existing tray icons at that time.\nThere is no way back, just change from the settings.\nAlso, after installing/updating applications, you will have to press this combination again, but this is much easier than using toggle switches in the settings.\nBefore use, read the explanation from the author of the add-on in the help."
     },
     "SpeechPauseResume": {
-      "description": "The SpeechPauseResume add-on changes the function of the Control key.\nPressing the Control key interrupts speech, and when pressed again, it continues from the same place. Same as using the Shift key.\nThis addition will please those who find it more convenient to pause and resume reading text using the Control key, and interrupt speech without pausing with the Shift key.\nSpeechPauseResume has no settings or keyboard shortcuts. Starts working immediately after installation or activation."
+      "description": "The SpeechPauseResume add-on changes the function of the Control key.\nPressing the Control key interrupts speech, and when pressed again, it continues from the same place. Same as using the Shift key.\nThis addition will please those who find it more convenient to pause and resume reading text using the Control key, and interrupt speech without pausing with the Shift key.\nSpeechPauseResume has no settings or keyboard shortcuts. Starts working immediately after installation or activation.",
+      "summary": "SpeechPauseResume"
     },
     "MistworldAutoProfession": {
       "summary": "Mistworld Auto Profession",
       "description": "The MistworldAutoProfession add-on is a small patch for the MMO-RPG MistWorld audio that allows you to use professional skills (herbalism, fishing and mining) in the background.\nAutomatically leaves Myst-World when life force runs out.\nTo reduce unnecessary screen reader messages, it automatically closes the game after vitality is depleted.\nMore details are described in the add-on help."
     },
     "mouse": {
-      "description": "The Mouse add-on displays a test message when you press NVDA+Control+0.\nWhat is the point of this addition.\nI use this extension to test GitHub and the entire process of working with NVDA add-ons.\nThe keyboard shortcut can be changed in input gestures, subsection My Mouse."
+      "description": "The Mouse add-on displays a test message when you press NVDA+Control+0.\nWhat is the point of this addition.\nI use this extension to test GitHub and the entire process of working with NVDA add-ons.\nThe keyboard shortcut can be changed in input gestures, subsection My Mouse.",
+      "summary": "Mouse"
     },
     "skypeIsBack": {
       "summary": "Skype Is Back",
@@ -2793,7 +2830,8 @@
       "description": "IgnoreBlanksIndentationReporting add-on which changes the order in which indentations are displayed by ignoring blank lines when deciding whether changes to indentation should be reported.\nThis is best understood by comparing normal behavior with an example (Examples are provided in the add-on help).\nNote: As of NVDA 2023.3, this functionality is available natively in NVDA and can be enabled in the Document Formatting settings under \"Ignore Blank Lines for Line Indentation Reporting\"."
     },
     "numlockDisabler": {
-      "description": "The NumlockDisabler add-on disables numlock after a specified time.\nThe addition will be useful for those who, after entering data in various editing fields, forget to turn off Numlock and, after switching to other editors, unnecessary numbers are written.\nThere is nothing in the add-on except a timer to turn off Numlock; the number of seconds is configured in the NVDA settings, in the Numlock disabler panel."
+      "description": "The NumlockDisabler add-on disables numlock after a specified time.\nThe addition will be useful for those who, after entering data in various editing fields, forget to turn off Numlock and, after switching to other editors, unnecessary numbers are written.\nThere is nothing in the add-on except a timer to turn off Numlock; the number of seconds is configured in the NVDA settings, in the Numlock disabler panel.",
+      "summary": "NumlockDisabler"
     },
     "D4EncodingNormalizer": {
       "summary": "D4 Encoding Normalizer",
@@ -2812,7 +2850,8 @@
       "description": "The BeepKeyboard add-on provides the following features that you can use to customize the behavior of your NVDA keyboard:\nBeep for capital letters when caps lock is enabled: If this feature is enabled, NVDA will play a beep when you type a capital letter and caps lock is enabled. Don't make any more capitalization mistakes!\nBeep when typing while holding down the shift key: When enabled, NVDA will make a beep sound when you type a character while holding down the shift key.\nToggle Key Beep: With this feature, NVDA will emit a higher tone when the toggle key is enabled, and a lower tone when the key switch is disabled.\nSwitch key change announcement: Only when switch key change beep is turned on. You can enable or disable NVDA to notify you about the status of the switch keys.\nBeep for specified symbols: NVDA will play a beep for all symbols that you have set in the advanced settings.\nDisable beep for password fields: This feature is enabled by default to avoid security risks. Turn it off if you want to hear beeps in password fields."
     },
     "AutoWindowMaximizer": {
-      "description": "The AutoWindowMaximizer add-on automatically maximizes each window to full screen as soon as the user switches to it.\nAs any experienced screen reader user knows, it usually works best when the program window is maximized. \nThis simple add-on designed for Windows 10 tries to maximize each window when the user switches to it.\nThe add-on does not have settings or keyboard shortcuts."
+      "description": "The AutoWindowMaximizer add-on automatically maximizes each window to full screen as soon as the user switches to it.\nAs any experienced screen reader user knows, it usually works best when the program window is maximized. \nThis simple add-on designed for Windows 10 tries to maximize each window when the user switches to it.\nThe add-on does not have settings or keyboard shortcuts.",
+      "summary": "AutoWindowMaximizer"
     },
     "Rutas_fav": {
       "description": "<em>RoutesFav</em>is an add-on for the NVDA screen reader that aims to quickly and easily manage the user's favorite paths, allowing them to be launched, deleted or added new ones in a simple and intuitive way for the user.\nBelow are the commands for using the functions described above (changed through the Input Gestures section in the Favorite Paths category:\nNVDA+ALT+A: Launches a dialog to enter the required data, such as the absolute path and ID to be displayed in the virtual menu.\nNVDA+ALT+J: Go to the previous item in the list of saved paths.\nNVDA+ALT+K: Moves to the next item in the list of saved paths.\nNVDA+ALT+L: Single click opens the selected path, double click quickly opens it and removes it from the list.\nMore information in the add-on help."
@@ -2825,7 +2864,8 @@
       "description": "The SoundsKeyboard add-on plays sounds during operations with the clipboard - pasting, copying and cutting.\nThere is also a sound when pressing the print screen key.\nIt is possible to pronounce information about emerging events, as in the fakeClipboardAnouncement add-on."
     },
     "customTextFinder": {
-      "description": "The CustomTextFinder add-on disables the error window when no result is found when using NVDA search.\nWithout the add-on, the message (\"hello\" text not found) will be displayed in the dialog box accompanied by an error sound. Such a window can be closed using the Cancel key or a button in the window itself.\nWith the addition, the same message will be spoken only by speech without an error window.\nThe add-on has no settings and starts working immediately after installation or activation."
+      "description": "The CustomTextFinder add-on disables the error window when no result is found when using NVDA search.\nWithout the add-on, the message (\"hello\" text not found) will be displayed in the dialog box accompanied by an error sound. Such a window can be closed using the Cancel key or a button in the window itself.\nWith the addition, the same message will be spoken only by speech without an error window.\nThe add-on has no settings and starts working immediately after installation or activation.",
+      "summary": "CustomTextFinder"
     },
     "avp": {
       "summary": "AVP",
@@ -2856,7 +2896,8 @@
       "description": "The WakeSpeaker add-on emits white noise at low volume to prevent speakers from falling asleep.\nThis is useful if you have speakers, Bluetooth headphones, or similar devices that go into sleep mode when they stop receiving audio, usually to save power.\nWhen you install this add-on, it will work with default settings.\nThis add-on has a script to toggle the add-on's state (on or off) without assigning a gesture. You can assign gestures in the Gesture Input dialog box.\nIf you want to change some settings, go to NVDA menu, Options, Settings, Wake Speaker category, and adjust any of the options."
     },
     "fiche": {
-      "description": "The Fiche add-on provides greater access to the Fiche program of the same name using NVDA.\nFiche for Windows was developed by Jean-Claude Mortimore."
+      "description": "The Fiche add-on provides greater access to the Fiche program of the same name using NVDA.\nFiche for Windows was developed by Jean-Claude Mortimore.",
+      "summary": "Fiche"
     },
     "Gregor_nvda": {
       "description": "The Gregor add-on is a Polish Gregor speech synthesizer for NVDA."
@@ -2868,7 +2909,8 @@
       "description": "DocumentFormattingHelper add-on, which makes it easier for blind users to know and manage document formatting.\nA formatting viewer, invoked using the NVDA+shift+ctrl+o keyboard shortcut, that provides a checkable list of part-specific (i.e. not generic) formatting and an updated, filtered view of the document's contents according to the formatting selected in the previous list.\nThe checkable list presents the attributes (styles, fonts, colors...) that the user can check and, between brackets, the number of non-consecutive blocks found with a particular attribute.\nThe default key binding can be configured in the Input Gestures dialog box, DocumentFormattingHelper, Launch Formatting Helper.\nMore details about the functionality are described in the help."
     },
     "ELTEN": {
-      "description": "The Elten add-on improves the accessibility of the Windows client of the Elten social network of the same name for the blind.\nKeyboard shortcut:\nLaptop layout: NVDA+A and NVDA+L.\nDesktop layout: NVDA+Down Arrow and NVDA+Up Arrow."
+      "description": "The Elten add-on improves the accessibility of the Windows client of the Elten social network of the same name for the blind.\nKeyboard shortcut:\nLaptop layout: NVDA+A and NVDA+L.\nDesktop layout: NVDA+Down Arrow and NVDA+Up Arrow.",
+      "summary": "Elten"
     },
     "reportBackgroundProgressBars": {
       "summary": "Report Background Progress Bars",
@@ -2899,20 +2941,24 @@
       "description": "SpotifySuppressLiveRegions add-on to improve the Spotify program.\nThe Spotify desktop client has been updated, and the name of the currently playing track is now announced every time a track is switched.\nThis is a small hack in the form of an add-on to eliminate this ailment.\nIt has no settings or keyboard shortcuts; it starts working immediately after installation or switching on."
     },
     "tencent": {
-      "description": "The Tencent add-on adds Tencent APIs for OCR, translation, and more.\nTencent Cloud API costs money. However, the plugin has the author's SECRETTID and SecretKey, and a number of free translations and text recognition are available\nNVDA + CTRL + Y- Translate buffer from English to Chinese.\nNVDA + CTRL + SHIFT + Y/ Translate buffer from Chinese to English.\nNVDA + CTRL + E- Navigation object for OCR.\nNVDA + CTRL + SHIFT + E- Text recognition program window.\nNVDA + CTRL + ALT + E- Full screen text recognition.\nNVDA + CTRL + N- Screenshot navigation object.\nNVDA + CTRL + SHIFT + N- Screenshot program window.\nNVDA + CTRL + ALT + N/ Screenshot of the entire screen."
+      "description": "The Tencent add-on adds Tencent APIs for OCR, translation, and more.\nTencent Cloud API costs money. However, the plugin has the author's SECRETTID and SecretKey, and a number of free translations and text recognition are available\nNVDA + CTRL + Y- Translate buffer from English to Chinese.\nNVDA + CTRL + SHIFT + Y/ Translate buffer from Chinese to English.\nNVDA + CTRL + E- Navigation object for OCR.\nNVDA + CTRL + SHIFT + E- Text recognition program window.\nNVDA + CTRL + ALT + E- Full screen text recognition.\nNVDA + CTRL + N- Screenshot navigation object.\nNVDA + CTRL + SHIFT + N- Screenshot program window.\nNVDA + CTRL + ALT + N/ Screenshot of the entire screen.",
+      "summary": "Tencent"
     },
     "VoiceOverByAnenkov": {
-      "description": "The VoiceOverByAnenkov add-on adds a sound theme with Voice Over sounds.\nSounds can be turned on or off with the command NVDA+Alt+O.\nThe add-on is a modification and is based on the VoiceOver add-on."
+      "description": "The VoiceOverByAnenkov add-on adds a sound theme with Voice Over sounds.\nSounds can be turned on or off with the command NVDA+Alt+O.\nThe add-on is a modification and is based on the VoiceOver add-on.",
+      "summary": "VoiceOverByAnenkov"
     },
     "YYPatch": {
-      "description": "The YYPatch add-on improves the accessibility of the YY program of the same name, and also adds support for reading aloud the list of channel participants.\nYY is a Chinese voice chat and messaging program."
+      "description": "The YYPatch add-on improves the accessibility of the YY program of the same name, and also adds support for reading aloud the list of channel participants.\nYY is a Chinese voice chat and messaging program.",
+      "summary": "YYPatch"
     },
     "ViewNetworks": {
       "summary": "View Networks",
       "description": "The ViewNetworks add-on lists the networks stored on a given system and, if possible, attempts to recover the password.\nThe add-on does not hack or attempt to crack Wi-Fi passwords.\nIt recovers or attempts to recover the password saved when you first connected to the network.\nWindows+Alt+N: Displays the Save Networks dialog.\nWindows+Alt+O: Displays detailed information about the addon.\nWindows+Alt+P: Displays the password recovery dialog.\nWindows+Alt+J: Opens the add-on's help page.\nYou can change commands in input gestures."
     },
     "viyfMirror": {
-      "description": "The ViyfMirror add-on adds support for NVDA update mirror sources provided by VIYF to speed up downloading of NVDA updates.\nThe add-on does not have keyboard shortcuts or settings."
+      "description": "The ViyfMirror add-on adds support for NVDA update mirror sources provided by VIYF to speed up downloading of NVDA updates.\nThe add-on does not have keyboard shortcuts or settings.",
+      "summary": "ViyfMirror"
     },
     "VNSwitching": {
       "summary": "VNSwitching",
@@ -2930,7 +2976,8 @@
       "description": "SleepBlocker add-on to temporarily disable Windows automatic sleep mode.\nNVDA+Control+Shift+C - Enables or disables the sleep blocker.\nThis command can be changed in Input Gestures, in the Miscellaneous subsection, the function Prevent the system from going into sleep mode.\nIn the NVDA menu, Submenu Options, Settings, Sleep Blocker: The following function is available - Also block the display from going into sleep mode.\nThis feature is not enabled by default."
     },
     "shamela": {
-      "description": "The Shamela add-on improves the accessibility of the Shamela program of the same name.\nPress f5 or f6 to read the loaded page during your selection in shamela."
+      "description": "The Shamela add-on improves the accessibility of the Shamela program of the same name.\nPress f5 or f6 to read the loaded page during your selection in shamela.",
+      "summary": "Shamela"
     },
     "Tooltip": {
       "summary": "Tooltip",
@@ -2941,51 +2988,61 @@
       "description": "The SoundFile add-on plays sounds when navigating in the file manager, depending on file extensions.\nSupports windows explorer, TotalCommander and file managers WinRar and 7Zip.\nYou need to enable file extensions in File Explorer.\nIn the archiver - short list mode (only names should be displayed."
     },
     "nvdaRd": {
-      "description": "The NVDARd add-on adds support for accessing remote desktop sessions on NVDA using Microsoft Remote Desktop, Citrix, or VMware Horizon.\nWhen NVDA is installed on both the client and server, speech and braille generated on the server will be spoken and played back on the client machine.\nThus, the user is able to manage a remote system as effectively as a local one."
+      "description": "The NVDARd add-on adds support for accessing remote desktop sessions on NVDA using Microsoft Remote Desktop, Citrix, or VMware Horizon.\nWhen NVDA is installed on both the client and server, speech and braille generated on the server will be spoken and played back on the client machine.\nThus, the user is able to manage a remote system as effectively as a local one.",
+      "summary": "NVDARd"
     },
     "My-IP": {
-      "description": "The MyIP add-on announces the current IP address.\nPress the keyboard shortcut NVDA+Control+I to find it out.\nYou can change the combination in input gestures, subsection My IP address."
+      "description": "The MyIP add-on announces the current IP address.\nPress the keyboard shortcut NVDA+Control+I to find it out.\nYou can change the combination in input gestures, subsection My IP address.",
+      "summary": "MyIP"
     },
     "lineMessage": {
       "summary": "LineMessage",
       "description": "The LineMessage add-on will send a copy of the text message to Line.\nKeyboard shortcut NVDA+L."
     },
     "lunar": {
-      "description": "The Lunar add-on adds the Chinese lunar calendar.\nTo display information about the lunar calendar, press NVDA+F12 twice; if you press it once, you will hear the current time."
+      "description": "The Lunar add-on adds the Chinese lunar calendar.\nTo display information about the lunar calendar, press NVDA+F12 twice; if you press it once, you will hear the current time.",
+      "summary": "Lunar"
     },
     "klicktel": {
       "description": "The Klicktel add-on improves the accessibility of the Klicktel program of the same name from German developers.\nWith Klicktel the whole city is at your fingertips. Here you will find all addresses, phone numbers and information from your region.\nFeatures of clicktel:\nTelephone and business directory with over 28 million phone numbers and addresses.\nRestaurants, ATMs, doctors, shops, gas stations and much more, find it quickly and easily.\nCurrent film programs, parties, theater performances and concerts in your city.\nklicktel - convenient categories and quick search\n• Reverse lookup of unknown phone numbers.\nHundreds of thousands of user reviews will help you choose the best supplier in your area.\nUseful features: saving found contacts, map views, local search, emergency services, etc."
     },
     "lazarus": {
-      "description": "The Lazarus Add-on improves the availability of the open source lazarus development environment for NVDA users."
+      "description": "The Lazarus Add-on improves the availability of the open source lazarus development environment for NVDA users.",
+      "summary": "Lazarus"
     },
     "ExplorerEnhancements": {
       "summary": "ExplorerEnhancements",
       "description": "Explorer enhancements is an experimental module for Explorer that addresses some of the shortcomings of the original appModule.\nAbout issues #3152 and #5759:\nFor testing, this add-on implements the Notification function that the folder is empty."
     },
     "brlkey": {
-      "description": "The BrlKey add-on is a new version of the Braille keyboard.\nSupplement in Chinese."
+      "description": "The BrlKey add-on is a new version of the Braille keyboard.\nSupplement in Chinese.",
+      "summary": "BrlKey"
     },
     "brlReader": {
-      "description": "The BrlReader add-on reports the content of a Braille document.\nNVDA+ keyboard shortcut. (dot)."
+      "description": "The BrlReader add-on reports the content of a Braille document.\nNVDA+ keyboard shortcut. (dot).",
+      "summary": "BrlReader"
     },
     "CloseAll": {
-      "description": "CloseAll add-on for the convenience of working with the CloseAll program of the same name for closing program windows."
+      "description": "CloseAll add-on for the convenience of working with the CloseAll program of the same name for closing program windows.",
+      "summary": "CloseAll"
     },
     "Becky": {
       "description": "Becky add-on to improve the accessibility of the Becky email client of the same name! Internet mail.\nNVDA+Shift+U - reports the number of all and unread messages in the current folder.\nNVDA+Shift+a - In the message composer, moves focus to the list of attachments, if visible.\nThese keyboard shortcuts can be reassigned in the Becky category from the Input Gestures dialog."
     },
     "Add-on Packager by Technology and News": {
-      "description": "The AddonPackagerByTechnologyAndNews add-on will help you quickly create backup copies of add-ons.\nAfter installation, the add-on interface is available in the NVDA menu, Service submenu.\nYou can read more in the add-on help."
+      "description": "The AddonPackagerByTechnologyAndNews add-on will help you quickly create backup copies of add-ons.\nAfter installation, the add-on interface is available in the NVDA menu, Service submenu.\nYou can read more in the add-on help.",
+      "summary": "AddonPackagerByTechnologyAndNews"
     },
     "bluetoothaudio": {
       "description": "BluetoothAudio is an add-on for NVDA that improves sound quality when working with headphones or speakers connected via Bluetooth.\nMost Bluetooth devices go into standby mode after a few seconds of inactivity. This means that when NVDA starts talking again, the first split second of audio will be lost. The Bluetooth Audio add-on prevents Bluetooth devices from going into standby mode by constantly playing a quiet sound that is inaudible to the human ear.\nThe add-on has no keyboard shortcuts and works immediately after installation or activation."
     },
     "calsci": {
-      "description": "The Calsci add-on improves the use of the Calsci program of the same name with a number of useful automations\nThese include:\nWhen we insert a calculation into calsci, commas are replaced with dots \nWhen copying a calculation or result from calsci, the periods are replaced by commas.\nWhen writing calculations directly in Calsci, when you press the comma for a decimal number, a period is automatically added.\nTo get the result, you can press Enter instead of Alt+C, which may be faster.\nOption to add a braille shortcut to command gestures when copying and pasting in Calsci.\nThe add-on has an automatic update feature that can be used with the following keyboard shortcuts:\nNVDA+Alt+C to search for updates manually.\nNVDA+Shift+Alt+C to activate/deactivate search for updates."
+      "description": "The Calsci add-on improves the use of the Calsci program of the same name with a number of useful automations\nThese include:\nWhen we insert a calculation into calsci, commas are replaced with dots \nWhen copying a calculation or result from calsci, the periods are replaced by commas.\nWhen writing calculations directly in Calsci, when you press the comma for a decimal number, a period is automatically added.\nTo get the result, you can press Enter instead of Alt+C, which may be faster.\nOption to add a braille shortcut to command gestures when copying and pasting in Calsci.\nThe add-on has an automatic update feature that can be used with the following keyboard shortcuts:\nNVDA+Alt+C to search for updates manually.\nNVDA+Shift+Alt+C to activate/deactivate search for updates.",
+      "summary": "Calsci"
     },
     "CCBE": {
-      "description": "The CCBE add-on adds the ability to convert braille to Chinese braille when using the NotePad program.\nAlt+Left Arrow: Decrease width.\nAlt+Right Arrow: Increase width.\nAlt+C: Convert Braille to Chinese.\nControl+R: Change the selection order.\nNVDA+Space: Search down empty lines.\nShift+NVDA+Space: Search for an empty line up.\nAlt+F1: Add-on Help."
+      "description": "The CCBE add-on adds the ability to convert braille to Chinese braille when using the NotePad program.\nAlt+Left Arrow: Decrease width.\nAlt+Right Arrow: Increase width.\nAlt+C: Convert Braille to Chinese.\nControl+R: Change the selection order.\nNVDA+Space: Search down empty lines.\nShift+NVDA+Space: Search for an empty line up.\nAlt+F1: Add-on Help.",
+      "summary": "CCBE"
     },
     "ChangeOutputDevice": {
       "summary": "ChangeOutputDevice",
@@ -3862,7 +3919,8 @@
       "summary": "Quiet Console"
     },
     "Rider-improved": {
-      "summary": "JetBrains Rider"
+      "summary": "JetBrains Rider",
+      "description": "The RiderImproved add-on is designed to improve the accessibility of the JetBrains Rider IDE.\nJetBrains Rider is a powerful integrated development environment, but its accessibility features are far from ideal for users who rely on screen readers. This add-on aims to address this shortcoming by improving Rider's accessibility, making critically important information more accessible and enhancing the overall user experience for developers with visual impairments.\nThis add-on provides the following features you can use in JetBrains Rider:\nThe add-on automatically or manually reads Rider's status bar, which displays useful information such as errors/warnings for the current line of code and much more.\nYou can use the NVDA+D key combination to view documentation for a code autocompletion item.\nThis add-on was tested with JetBrains Rider version 2024.1. Older or newer versions may cause the add-on to malfunction.\nBefore use, certain settings must be configured in Rider, which are described in the add-on's help."
     },
     "Sapi 5 and mobile": {
       "summary": "SAPI 5 and Microsoft OneCore"
@@ -4724,6 +4782,14 @@
     "Pocket-TTS": {
       "summary": "PocketTTS",
       "description": "The Pocket TTS add-on provides neural English voices for NVDA based on the Pocket TTS ONNX model.\nIt is a personally maintained fork, compatible with NVDA 2026.1 and newer.\nThe add-on includes built-in voices and lets you create new voice embeddings from short WAV or MP3 samples.\nSelect Pocket TTS in the NVDA synthesizer dialog, and choose the voice in the speech settings or the synthesizer settings ring.\nRequired models are usually downloaded during installation and can be restored automatically if needed.\nThe Pocket TTS voice manager lets you add, rename and remove voices.\nThe maximum sample length for voice cloning can be 30, 45 or 60 seconds, with 45 seconds recommended.\nIf there is not enough memory for the selected length, a shorter segment is used automatically.\nThe \"Flow steps\" parameter controls the number of model refinement passes during speech generation."
+    },
+    "League & Riot Accessibility": {
+      "summary": "League & Riot Accessibility",
+      "description": "Significantly improves the accessibility of the Riot Client and League of Legends for NVDA users."
+    },
+    "versionCollector": {
+      "summary": "VersionCollector",
+      "description": "The Version Collector add-on keeps track of all names and versions of the software used while running NVDA.\nIt provides a list that can be copied/exported for diagnostics and support."
     }
   }
 }
