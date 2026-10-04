@@ -4794,6 +4794,10 @@
     "ShiKuangBrailleTranslate": {
       "summary": "ShiKuang Braille Translate",
       "description": "Translates Chinese characters into Chinese Braille using the BWordX engine for display on a Braille display. Supports national standard, double-pinyin, and ideographic Braille."
+    },
+    "ShiKuang Braille Translate 师旷中文盲文翻译：点显器输出（国家通用、双拼、表意盲文，BWordX 引擎）": {
+      "summary": "ShiKuang Braille Translate",
+      "description": "Translates Chinese characters into Chinese Braille using the BWordX engine for display on a Braille display. Supports national standard, double-pinyin, and ideographic Braille."
     }
   }
 }
