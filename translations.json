@@ -4606,10 +4606,6 @@
       "summary": "Clipboard Speaking",
       "description": "Speaks clipboard-related actions and notifications."
     },
-    "قادرين: الإدارة السحابية المتقدمة للروابط والبرامج": {
-      "summary": "Qadreen",
-      "description": "Cloud-based management of software links and resources for the Qadreen community: automatic background synchronization, secure credential storage, and a design mode for supervisors to publish resources. Press NVDA+Control+H to browse the managed links."
-    },
     "《妹妹、他人、妄想症》无障碍辅助": {
       "summary": "Sister Other Paranoia Accessibility",
       "description": "Screen reader support for the visual novel Sister Other Paranoia: automatically reads dialogue and character names, announces mind readings, choices, menus, and buttons, and provides shortcuts for browsing dialogue history. Requires the SopAccess.dll BepInEx plugin in the game directory."
@@ -4798,6 +4794,14 @@
     "ShiKuang Braille Translate 师旷中文盲文翻译：点显器输出（国家通用、双拼、表意盲文，BWordX 引擎）": {
       "summary": "ShiKuang Braille Translate",
       "description": "Translates Chinese characters into Chinese Braille using the BWordX engine for display on a Braille display. Supports national standard, double-pinyin, and ideographic Braille."
+    },
+    "monitoreoSistema": {
+      "summary": "Accessible system resource monitor",
+      "description": "Accessible resource monitor for NVDA. Based on Resource Monitor by Joseph Lee and contributors. Check CPU usage, memory, graphics card load, hard drive and SSD status, battery level, Bluetooth devices, Wi-Fi network, internet speed, and configurable thermal alerts in real time."
+    },
+    "قادرين: الإدارة السحابية المتقدمة والمزامنة المركزية للبرامج": {
+      "summary": "Qadreen: Advanced Cloud Management and Central Software Sync",
+      "description": "Advanced add-on for the Qadreen community that manages and organizes programs and links through a non-blocking atomic cloud sync engine, with automatic conflict handling and full protection of pending data across restarts."
     }
   }
 }
