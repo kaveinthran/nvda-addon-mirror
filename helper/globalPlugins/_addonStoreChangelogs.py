@@ -6,6 +6,7 @@ used only after the catalog has supplied a verified GitHub repository URL.
 """
 import builtins
 import json
+import math
 import re
 import threading
 import time
@@ -22,6 +23,8 @@ MODEL_RELEASE_TIME_ATTRIBUTE = "_serrebiReleaseTime"
 _GITHUB_REPO = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)/?$")
 CACHE_SECONDS = 15 * 60
 MAX_RELEASES = 30
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_CACHED_REPOSITORIES = 64
 
 
 def githubRepository(sourceURL):
@@ -37,10 +40,10 @@ def githubRepository(sourceURL):
 def releaseTime(model):
 	"""A source release timestamp in milliseconds, or ``None`` when unknown."""
 	value = getattr(model, MODEL_RELEASE_TIME_ATTRIBUTE, None)
-	if isinstance(value, (int, float)) and value > 0:
+	if type(value) in (int, float) and math.isfinite(value) and value > 0:
 		return value
 	value = getattr(model, "submissionTime", None)
-	return value if isinstance(value, (int, float)) and value > 0 else None
+	return value if type(value) in (int, float) and math.isfinite(value) and value > 0 else None
 
 
 def sortKey(model, descending=False):
@@ -57,7 +60,7 @@ def isSecureDesktop():
 		import globalVars
 		return bool(globalVars.appArgs.secure)
 	except (ImportError, AttributeError):
-		return False
+		return True
 
 
 class ReleaseHistory:
@@ -85,6 +88,8 @@ class ReleaseHistory:
 		except (URLError, ValueError, OSError):
 			result, error = [], "networkError"
 		with self._lock:
+			if repository not in self._cache and len(self._cache) >= MAX_CACHED_REPOSITORIES:
+				del self._cache[next(iter(self._cache))]
 			self._cache[repository] = (self._now(), result, error)
 		return result, error
 
@@ -96,7 +101,10 @@ class ReleaseHistory:
 			headers={"Accept": "application/vnd.github+json", "User-Agent": "NVDA-addonStoreMirror"},
 		)
 		with urlopen(request, timeout=10) as response:
-			return json.loads(response.read().decode("utf-8"))
+			body = response.read(MAX_RESPONSE_BYTES + 1)
+			if len(body) > MAX_RESPONSE_BYTES:
+				raise ValueError("Release metadata exceeds the response limit")
+			return json.loads(body.decode("utf-8"))
 
 
 def _catalogNote(model):
@@ -111,10 +119,23 @@ def _fallback(model, reason):
 		return [(getattr(model, "addonVersionName", "Latest"), note, provenance)]
 	homepage = getattr(model, "homepage", None)
 	if isinstance(homepage, str) and homepage.startswith(("https://", "http://")):
-			return [
-				("", "No release notes are available. Author page: %s" % homepage, reason),
-			]
-	return [("", "No release notes are available for this add-on.", reason)]
+		# Translators: No changelog was found; this is the catalog's author page.
+		return [("", _("No release notes are available. Author page: {url}").format(url=homepage), reason)]
+	# Translators: The catalog and release-history service have no changelog for this add-on.
+	return [("", _("No release notes are available for this add-on."), reason)]
+
+
+def _provenanceLabel(source):
+	# Translators: Origins and fallback reasons for changelog records.
+	labels = {
+		"catalog": _("Catalog notes"), "GitHub release": _("GitHub release"),
+		"notGitHub": _("Release history unavailable for this source"),
+		"rateLimit": _("Release service rate limit reached"),
+		"networkError": _("Release service unavailable"), "missing": _("No release notes published"),
+	}
+	if isinstance(source, str) and source.startswith("catalog; "):
+		return labels["catalog"] + "; " + labels.get(source.split("; ", 1)[1], _("History unavailable"))
+	return labels.get(source, _("History unavailable"))
 
 
 def historyForModel(model, history):
@@ -131,7 +152,8 @@ def historyForModel(model, history):
 			continue
 		body = release.get("body")
 		if isinstance(body, str) and body.strip():
-			rows.append((str(release.get("tag_name") or release.get("name") or "Unknown version"), body.strip(), "GitHub release"))
+			version = str(release.get("tag_name") or release.get("name") or _("Unknown version"))
+			rows.append((version, body.strip(), "GitHub release"))
 	return rows or _fallback(model, "missing")
 
 
@@ -145,6 +167,8 @@ class ChangelogFeature:
 		self._generation += 1
 
 	def enable(self):
+		if isSecureDesktop():
+			return
 		import importlib
 		modelModule = importlib.import_module("addonStore.models.addon")
 		storeModule = importlib.import_module("gui.addonStoreGui.viewModels.store")
@@ -192,12 +216,9 @@ class ChangelogFeature:
 		def filtered(vm):
 			if not hasattr(vm, "_serrebiDateSort") or vm._serrebiDateSort is None:
 				return original(vm)
-			items = list(vm._addons.values())
 			# Preserve core filtering, then replace only ordering. This also keeps
 			# unknown dates last for both ascending and descending order.
-			if getattr(vm, "_filterString", None):
-				wanted = set(original(vm))
-				items = [item for item in items if item.Id in wanted]
+			items = [vm._addons[addonId] for addonId in original(vm)]
 			return [
 				item.Id
 				for item in sorted(items, key=lambda item: sortKey(item.model, vm._serrebiDateSort))
@@ -269,6 +290,9 @@ class ChangelogFeature:
 	def show(self, item):
 		if item is None or isSecureDesktop():
 			return
+		import ui
+		# Translators: Release history is being retrieved in the background.
+		ui.message(_("Loading changelog."))
 		generation = self._generation
 		def worker():
 			rows = historyForModel(item.model, self.history)
@@ -282,21 +306,28 @@ class ChangelogFeature:
 		threading.Thread(target=worker, name="addonStoreChangelog", daemon=True).start()
 
 	def _showDialog(self, name, rows, generation):
-		if generation != self._generation:
+		if generation != self._generation or isSecureDesktop():
 			return
 		import wx
 		from gui import mainFrame
 		# Translators: Title of an Add-on Store dialog. {name} is the add-on name.
 		dialog = wx.Dialog(mainFrame, title=_("Changelog: {name}").format(name=name))
 		sizer = wx.BoxSizer(wx.VERTICAL)
-		choice = wx.Choice(dialog, choices=["%s (%s)" % (version or _("Notes"), source) for version, _notes, source in rows])
+		# Translators: Label for the release-version choice in the changelog viewer.
+		sizer.Add(wx.StaticText(dialog, label=_("&Version and source:")), 0, wx.ALL, 8)
+		choice = wx.Choice(dialog, choices=[
+			"%s (%s)" % (version or _("Notes"), _provenanceLabel(source))
+			for version, _notes, source in rows
+		])
+		sizer.Add(choice, 0, wx.EXPAND | wx.ALL, 8)
+		# Translators: Label for the read-only changelog text.
+		sizer.Add(wx.StaticText(dialog, label=_("Release &notes:")), 0, wx.LEFT | wx.RIGHT, 8)
 		text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
 		def choose(_evt=None):
 			text.SetValue(rows[choice.GetSelection()][1])
 		choice.Bind(wx.EVT_CHOICE, choose)
 		choice.SetSelection(0)
 		choose()
-		sizer.Add(choice, 0, wx.EXPAND | wx.ALL, 8)
 		sizer.Add(text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
 		buttons = dialog.CreateButtonSizer(wx.OK)
 		sizer.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)

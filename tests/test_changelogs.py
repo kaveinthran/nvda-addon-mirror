@@ -5,6 +5,7 @@ import sys
 import types
 import unittest
 from urllib.error import HTTPError
+from unittest import mock
 
 
 PATH = Path(__file__).resolve().parents[1] / "helper" / "globalPlugins" / "_addonStoreChangelogs.py"
@@ -19,6 +20,21 @@ class Model:
 
 
 class ChangelogTests(unittest.TestCase):
+	def setUp(self):
+		self.securePatch = mock.patch.object(changelogs, "isSecureDesktop", return_value=False)
+		self.securePatch.start()
+		self.addCleanup(self.securePatch.stop)
+
+	def test_non_finite_or_boolean_dates_are_unknown(self):
+		for value in (True, float("nan"), float("inf"), -1):
+			self.assertIsNone(changelogs.releaseTime(Model(submissionTime=value)))
+
+	def test_history_cache_has_a_size_bound(self):
+		history = changelogs.ReleaseHistory(fetch=lambda _repo: [])
+		for index in range(changelogs.MAX_CACHED_REPOSITORIES + 1):
+			history.get("owner/repo%d" % index)
+		self.assertEqual(changelogs.MAX_CACHED_REPOSITORIES, len(history._cache))
+
 	def test_only_canonical_https_github_repository_is_accepted(self):
 		self.assertEqual("owner/project", changelogs.githubRepository("https://github.com/owner/project"))
 		for value in (
@@ -63,7 +79,7 @@ class ChangelogTests(unittest.TestCase):
 				self._addons = {"unknown": Item("unknown", None), "old": Item("old", 1), "new": Item("new", 2)}
 				self._filterString = None; self._reverseSort = False; self._addonsFilteredOrdered = []
 				self.updated = types.SimpleNamespace(notify=lambda: None)
-			def _getFilteredSortedIds(self): return ["unknown", "old", "new"]
+			def _getFilteredSortedIds(self): return getattr(self, "allowed", ["unknown", "old", "new"])
 			def _updateAddonListing(self): self._addonsFilteredOrdered = self._getFilteredSortedIds()
 			def setSortField(self, *_args, **_kwargs): self.nativeCalled = True
 		listModule = types.ModuleType("gui.addonStoreGui.viewModels.addonList")
@@ -95,6 +111,10 @@ class ChangelogTests(unittest.TestCase):
 			dialog.onColumnFilterChange(types.SimpleNamespace(GetSelection=lambda: 3))
 			self.assertTrue(vm._serrebiDateSort)
 			self.assertEqual(["new", "old", "unknown"], vm._addonsFilteredOrdered)
+			# A source filter can narrow native results even without a search string.
+			vm.allowed = ["old", "unknown"]
+			dialog.onColumnFilterChange(types.SimpleNamespace(GetSelection=lambda: 3))
+			self.assertEqual(["old", "unknown"], vm._addonsFilteredOrdered)
 			dialog.onColumnFilterChange(types.SimpleNamespace(GetSelection=lambda: 0))
 			self.assertIsNone(vm._serrebiDateSort)
 			self.assertTrue(dialog.nativeCalled)
