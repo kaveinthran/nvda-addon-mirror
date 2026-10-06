@@ -362,22 +362,74 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return
 		plugin = self
 
+		class AuthorAction(actionClass):
+			"""An action whose label follows NVDA's currently selected item."""
+			def __init__(self, *args, **kwargs):
+				self._serrebiStaticDisplayName = ""
+				super().__init__(*args, **kwargs)
+				self._serrebiAuthorAction = True
+
+			@property
+			def displayName(self):
+				item = self.actionTarget
+				model = getattr(item, "model", None)
+				catalogAuthor = discovery.catalogAuthor(model)
+				author = catalogAuthor or discovery.authorName(model)
+				if not author:
+					# Translators: Displayed when an Add-on Store entry has neither
+					# author/publisher metadata nor a verified GitHub repository owner.
+					author = _("Unknown author")
+				elif not catalogAuthor:
+					# Translators: An Add-on Store action label where the listed author
+					# is inferred from the verified GitHub repository owner.
+					author = _("{owner} (repository owner)").format(owner=author)
+				# Ampersand is a wx menu mnemonic marker. Escape author metadata so
+				# it is always spoken and displayed literally.
+				author = author.replace("&", "&&")
+				# Translators: Add-on Store context-menu command, followed by its
+				# selected author or publisher.
+				return _("More by author, {author}").format(author=author)
+
+			@displayName.setter
+			def displayName(self, value):
+				self._serrebiStaticDisplayName = value
+
+		class SimilarAction(actionClass):
+			"""An action whose label follows NVDA's currently selected item."""
+			def __init__(self, *args, **kwargs):
+				self._serrebiStaticDisplayName = ""
+				super().__init__(*args, **kwargs)
+				self._serrebiSimilarAction = True
+
+			@property
+			def displayName(self):
+				item = self.actionTarget
+				name = discovery.displayName(getattr(item, "model", None))
+				name = name.replace("&", "&&")
+				# Translators: Add-on Store context-menu command, followed by its
+				# selected add-on name.
+				return _("More like {name}").format(name=name)
+
+			@displayName.setter
+			def displayName(self, value):
+				self._serrebiStaticDisplayName = value
+
 		def makeActionsList(storeVM):
 			actions = original(storeVM)
 			selected = storeVM.listVM.getSelection()
 			def valid(aVM):
 				return not plugin._isSecureDesktop() and aVM is not None
 			actions.extend((
-				actionClass(
-					# Translators: Opens a readable list of loaded add-ons by the selected author.
-					displayName=_("More by &author"),
+				AuthorAction(
+					# The dynamic property supplies the selected author at popup time.
+					displayName=_("More by author"),
 					actionHandler=lambda aVM: plugin._showAuthorMatches(storeVM, aVM, discovery),
 					validCheck=valid,
 					actionTarget=selected,
 				),
-				actionClass(
-					# Translators: Opens a readable list of loaded add-ons similar to the selection.
-					displayName=_("More &like this"),
+				SimilarAction(
+					# The dynamic property supplies the selected name at popup time.
+					displayName=_("More like this"),
 					actionHandler=lambda aVM: plugin._showSimilarMatches(storeVM, aVM, discovery),
 					validCheck=valid,
 					actionTarget=selected,
@@ -407,6 +459,26 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return actions
 
 		self._rememberPatch(vmClass, "_makeActionsList", makeActionsList)
+		try:
+			controls = importlib.import_module("gui.addonStoreGui.controls.actions")
+			contextMenuClass = controls._MonoActionsContextMenu
+			originalPopulate = contextMenuClass._populateContextMenu
+
+			def populateContextMenu(menu):
+				originalPopulate(menu)
+				for action, menuItem in menu._actionMenuItemMap.items():
+					if getattr(action, "_serrebiAuthorAction", False) or getattr(
+						action, "_serrebiSimilarAction", False,
+					):
+						menuItem.SetItemLabel(action.displayName)
+
+			self._rememberPatch(contextMenuClass, "_populateContextMenu", populateContextMenu)
+		except (AttributeError, ImportError):
+			# Discovery remains useful on builds where NVDA changed this private
+			# context-menu class; its action will use its first generated label.
+			getattr(log, "debug", lambda _message: None)(
+				"Could not refresh the dynamic discovery author menu label",
+			)
 
 	def _loadedItems(self, storeVM):
 		"""Return live Store list items rather than copies of their models."""
@@ -496,24 +568,67 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		except Exception:
 			log.exception("Could not announce Add-on Store discovery results")
 
-	def _showResults(self, storeVM, title, prompt, results):
+	def _resultColumns(self, model, evidence, discovery):
+		"""Return complete, spoken cell values for one discovery result."""
+		repository = discovery.repositoryDisplay(model)
+		author = discovery.catalogAuthor(model) or _("Unknown author")
+		owner = repository[0] if repository else _("Unknown repository owner")
+		repositoryName = "/".join(repository) if repository else _("Unknown repository")
+		return (
+			discovery.displayName(model),
+			author,
+			owner,
+			repositoryName,
+			evidence or _("No match reason available"),
+		)
+
+	def _showResults(self, storeVM, title, prompt, results, discovery):
 		"""Enter returns the selected result to its normal native Store UI."""
 		available = [(model, evidence) for model, evidence in results
 			if any(item.model is model for item in self._loadedItems(storeVM))]
 		if not available:
 			self._showDiscoveryNotice(_("No matching add-ons are available in the current Store list."))
 			return
-		choices = ["{name} — {evidence}".format(
-			name=getattr(model, "displayName", None) or getattr(model, "addonId", ""),
-			evidence=evidence,
-		) for model, evidence in available]
-		picker = wx.SingleChoiceDialog(self._storeDialog(storeVM), prompt, title, choices)
+		picker = wx.Dialog(self._storeDialog(storeVM), title=title)
 		result = None
 		try:
-			picker.SetSelection(0)
+			dip = getattr(picker, "FromDIP", lambda value: value)
+			sizer = wx.BoxSizer(wx.VERTICAL)
+			sizer.Add(wx.StaticText(picker, label=prompt), 0, wx.ALL, dip(8))
+			sizer.Add(wx.StaticText(picker, label=_("&Results:")), 0, wx.LEFT | wx.RIGHT, dip(8))
+			listCtrl = wx.ListCtrl(
+				picker,
+				style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.BORDER_SUNKEN,
+				name=_("Discovery results"),
+			)
+			columns = (
+				_("Name"), _("Author/publisher"), _("Repository owner"),
+				_("Repository"), _("Match reason"),
+			)
+			for column, label in enumerate(columns):
+				listCtrl.InsertColumn(column, label, width=dip(160))
+			for row, (model, evidence) in enumerate(available):
+				values = self._resultColumns(model, evidence, discovery)
+				listCtrl.InsertItem(row, values[0])
+				for column, value in enumerate(values[1:], 1):
+					listCtrl.SetItem(row, column, value)
+			listCtrl.Select(0)
+			listCtrl.Focus(0)
+			listCtrl.SetFocus()
+			listCtrl.Bind(
+				wx.EVT_LIST_ITEM_ACTIVATED,
+				lambda _event: picker.EndModal(wx.ID_OK),
+			)
+			sizer.Add(listCtrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, dip(8))
+			buttons = picker.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+			if buttons is not None:
+				sizer.Add(buttons, 0, wx.EXPAND | wx.ALL, dip(8))
+			picker.SetSizerAndFit(sizer)
+			picker.SetSize((dip(920), dip(360)))
+			picker.CentreOnParent()
 			if picker.ShowModal() != wx.ID_OK:
 				return
-			selection = picker.GetSelection()
+			selection = listCtrl.GetFirstSelected()
 			if not 0 <= selection < len(available):
 				return
 			result = available[selection][0]
@@ -532,9 +647,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return
 		self._showResults(
 			storeVM,
-			_("More by author"),
+			_("More by author, {author}").format(
+				author=discovery.authorName(item.model) or _("Unknown author"),
+			),
 			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
 			[(model, ", ".join(evidence)) for model, evidence in matches],
+			discovery,
 		)
 
 	def _showSimilarMatches(self, storeVM, item, discovery):
@@ -546,11 +664,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return
 		self._showResults(
 			storeVM,
-			_("More like this"),
+			_("More like {name}").format(name=discovery.displayName(item.model)),
 			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
 			[(model, "{reasons} (score {score})".format(
 				reasons="; ".join(reasons), score=score,
 			)) for model, reasons, score in matches],
+			discovery,
 		)
 
 	def _installedPath(self, item):

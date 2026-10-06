@@ -1048,39 +1048,111 @@ class HelperInitTerminateTests(unittest.TestCase):
         )
 
         class Picker:
-            def __init__(self, parent, prompt, title, choices):
+            def __init__(self, parent, title):
                 self.parent = parent
-                self.prompt = prompt
                 self.title = title
-                self.choices = choices
                 self.destroyed = False
 
-            def SetSelection(self, index):
-                self.defaultSelection = index
+            def scaleSize(self, value):
+                return value
+
+            def CreateSeparatedButtonSizer(self, _flags):
+                return object()
+
+            def SetSizerAndFit(self, _sizer):
+                pass
+
+            def SetSize(self, _size):
+                pass
+
+            def CentreOnParent(self):
+                pass
 
             def ShowModal(self):
-                return helper.wx.ID_OK
+                resultLists[0].handlers[helper.wx.EVT_LIST_ITEM_ACTIVATED](None)
+                return self.modalResult
 
-            def GetSelection(self):
-                return 1
+            def EndModal(self, result):
+                self.modalResult = result
 
             def Destroy(self):
                 self.destroyed = True
                 calls.append("destroy picker")
 
+        resultLists = []
+
+        class ResultList:
+            def __init__(self, _parent, style, name):
+                self.style = style
+                self.name = name
+                self.columns = []
+                self.rows = []
+                self.selected = -1
+                self.handlers = {}
+                resultLists.append(self)
+
+            def InsertColumn(self, index, label, width):
+                self.columns.append((index, label, width))
+
+            def InsertItem(self, row, value):
+                self.rows.append([value])
+
+            def SetItem(self, row, column, value):
+                while len(self.rows[row]) <= column:
+                    self.rows[row].append("")
+                self.rows[row][column] = value
+
+            def Select(self, row):
+                self.selected = row
+
+            def Focus(self, _row):
+                pass
+
+            def SetFocus(self):
+                pass
+
+            def Bind(self, event, handler):
+                self.handlers[event] = handler
+
+            def GetFirstSelected(self):
+                return 1
+
+        class Sizer:
+            def Add(self, *_args):
+                pass
+
         picker = []
         helper.wx.GetTopLevelWindows = lambda: [dialog]
-        helper.wx.SingleChoiceDialog = lambda *args: picker.append(Picker(*args)) or picker[-1]
+        helper.wx.Dialog = lambda *args, **kwargs: picker.append(Picker(*args, **kwargs)) or picker[-1]
+        helper.wx.ListCtrl = ResultList
+        helper.wx.BoxSizer = lambda *_args: Sizer()
+        helper.wx.StaticText = lambda *_args, **_kwargs: object()
+        helper.__dict__["_"] = lambda text: text
         plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+        discovery = types.SimpleNamespace(
+            repositoryDisplay=lambda model: (
+                ("Owner", "Repository") if getattr(model, "sourceURL", "") else None
+            ),
+            authorName=lambda model: getattr(model, "author", None),
+            catalogAuthor=lambda model: getattr(model, "author", None),
+            displayName=lambda model: model.displayName,
+        )
+        selectedModel.author = "Ada"
+        resultModel.sourceURL = "https://github.com/owner/repo"
 
         plugin._showResults(
             storeVM,
             "Similar",
             "Choose",
             [(selectedModel, "first"), (resultModel, "second")],
+            discovery,
         )
 
-        self.assertEqual(["Selected — first", "Result — second"], picker[0].choices)
+        self.assertEqual("Similar", picker[0].title)
+        self.assertEqual(
+            ["Result", "Unknown author", "Owner", "Owner/Repository", "second"],
+            resultLists[0].rows[1],
+        )
         self.assertTrue(picker[0].destroyed)
         self.assertEqual([""], applied)
         self.assertEqual([1], listVM.selectedIndexes)
@@ -1279,6 +1351,64 @@ class HelperInitTerminateTests(unittest.TestCase):
         plugin._rememberPatch(storeModule.AddonStoreVM, "_makeActionsList", lambda self: ["later"])
         plugin._restoreSourceSupport()
         self.assertIs(original, storeModule.AddonStoreVM._makeActionsList)
+
+    def test_discovery_action_labels_refresh_cached_menu_items(self):
+        """The native menu reuses items, so dynamic labels must be reset."""
+        helper = self._loadHelper({})
+        helper.__dict__["_"] = lambda text: text
+
+        class Action:
+            def __init__(self, displayName, actionHandler, validCheck, actionTarget):
+                self.displayName = displayName
+                self.actionHandler = actionHandler
+                self.validCheck = validCheck
+                self.actionTarget = actionTarget
+
+        targetA = types.SimpleNamespace(model=types.SimpleNamespace(displayName="One", author="Ada"))
+        targetB = types.SimpleNamespace(model=types.SimpleNamespace(displayName="Two", author="Bea"))
+        storeModule = types.ModuleType("gui.addonStoreGui.viewModels.store")
+        storeModule.AddonStoreVM = type("Store", (), {
+            "_makeActionsList": lambda _self: [],
+        })
+        actionModule = types.ModuleType("gui.addonStoreGui.viewModels.action")
+        actionModule.AddonActionVM = Action
+        discovery = types.ModuleType("globalPlugins._addonStoreDiscovery")
+        discovery.authorName = lambda model: model.author
+        discovery.catalogAuthor = lambda model: model.author
+        discovery.displayName = lambda model: model.displayName
+        discovery.repositoryURL = lambda _model: None
+        discovery.repositoryDisplay = lambda _model: None
+
+        class Menu:
+            def _populateContextMenu(self):
+                pass
+
+        controls = types.ModuleType("gui.addonStoreGui.controls.actions")
+        controls._MonoActionsContextMenu = Menu
+        plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+        plugin._sourceSupportPatches = []
+        with mock.patch.dict(sys.modules, {
+            "globalPlugins._addonStoreDiscovery": discovery,
+            "gui.addonStoreGui.viewModels.store": storeModule,
+            "gui.addonStoreGui.viewModels.action": actionModule,
+            "gui.addonStoreGui.controls.actions": controls,
+        }):
+            plugin._enableDiscovery()
+            storeVM = types.SimpleNamespace(listVM=types.SimpleNamespace(getSelection=lambda: targetA))
+            authorAction, similarAction = storeModule.AddonStoreVM._makeActionsList(storeVM)[:2]
+            authorItem = types.SimpleNamespace(labels=[])
+            similarItem = types.SimpleNamespace(labels=[])
+            authorItem.SetItemLabel = authorItem.labels.append
+            similarItem.SetItemLabel = similarItem.labels.append
+            menu = Menu()
+            menu._actionMenuItemMap = {authorAction: authorItem, similarAction: similarItem}
+            menu._populateContextMenu()
+            authorAction.actionTarget = targetB
+            similarAction.actionTarget = targetB
+            menu._populateContextMenu()
+
+        self.assertEqual(["More by author, Ada", "More by author, Bea"], authorItem.labels)
+        self.assertEqual(["More like One", "More like Two"], similarItem.labels)
 
     def test_init_wires_everything_and_terminate_unwinds(self):
         helper = self._loadHelper({})

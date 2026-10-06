@@ -5,7 +5,9 @@ clone repositories containing material you do not trust.
 
 1. Open the mirror Add-on Store and select an add-on with an author or publisher.
    Open its context menu with Applications or Shift+F10. Confirm **More by
-   author** opens a native selectable results list. The selected add-on may
+   author, _author name_** opens a native selectable results list. Confirm its
+   cells contain the actual author/publisher, repository owner, repository and
+   match reason, rather than only the column headings. The selected add-on may
    be the sole result; in that case confirm it says the result is limited to
    the loaded catalog. Where another channel for the same add-on exists, it
    must not be counted twice. Check that author/publisher and repository-owner
@@ -16,7 +18,7 @@ clone repositories containing material you do not trust.
    actions must target that add-on. Escape from the picker should preserve the
    original Store selection. Repeat when a search hides the chosen result.
 2. Select an add-on with meaningful name and description text. Use **More like
-   this** and confirm the results omit the selected add-on, give match reasons
+   _add-on name_** and confirm the results omit the selected add-on, give match reasons
    (title or description tokens), and remain in the same order when reopened.
    Try a specialized add-on whose words are not shared and confirm the clear
    no-results message. Press Enter on a result and inspect the same native

@@ -65,6 +65,18 @@ def repositoryURL(model):
 	return url if githubRepository(url) else None
 
 
+def repositoryDisplay(model):
+	"""Return the source's original-case GitHub owner and repository names."""
+	url = repositoryURL(model)
+	if url is None:
+		return None
+	parts = [part for part in urlparse(url).path.split("/") if part]
+	owner, repository = parts
+	if repository.endswith(".git"):
+		repository = repository[:-4]
+	return owner, repository
+
+
 def displayName(model):
 	value = getattr(model, "displayName", "")
 	return value.strip() if isinstance(value, str) and value.strip() else str(getattr(model, "addonId", ""))
@@ -76,6 +88,20 @@ def _identity(model):
 		if isinstance(value, str) and value.strip():
 			return value.strip()
 	return None
+
+
+def catalogAuthor(model):
+	"""Return only the catalog's author or publisher metadata."""
+	return _identity(model)
+
+
+def authorName(model):
+	"""Return catalog author/publisher, falling back to the GitHub owner."""
+	identity = catalogAuthor(model)
+	if identity:
+		return identity
+	repository = repositoryDisplay(model)
+	return repository[0] if repository else None
 
 
 def authorMatches(selectedModel, models):

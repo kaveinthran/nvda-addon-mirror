@@ -63,6 +63,12 @@ class DiscoveryTests(unittest.TestCase):
         selected = model("one", "One")
         self.assertEqual([], discovery.authorMatches(selected, [selected, model("two", "Two")]))
 
+    def test_author_name_can_use_repository_owner_without_falsifying_catalog_metadata(self):
+        addon = model("one", "One", sourceURL="https://github.com/Owner/repository")
+        self.assertIsNone(discovery.catalogAuthor(addon))
+        self.assertEqual("Owner", discovery.authorName(addon))
+        self.assertEqual(("Owner", "repository"), discovery.repositoryDisplay(addon))
+
     def test_clone_uses_argument_vector_and_refuses_existing_destination(self):
         with mock.patch.object(discovery.subprocess, "run") as run:
             run.return_value = SimpleNamespace(returncode=0)
