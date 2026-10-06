@@ -103,7 +103,7 @@ def _snapshot(dialog: Any) -> dict:
 		"incompatible": bool(store._filterIncludeIncompatible),
 		"sources": sorted(vm._serrebiSources) if getattr(vm, "_serrebiSources", None) is not None else None,
 		"selected": vm.selectedAddonId,
-		"dateSort": bool(getattr(vm, "_serrebiDateSort", False)),
+		"dateSort": getattr(vm, "_serrebiDateSort", None),
 	}
 
 
@@ -238,22 +238,18 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 					if field.name == state.get("sort"):
 						vm.setSortField(field, bool(state.get("reverse")))
 						dialog.columnFilterCtrl.SetSelection(index * 2 + bool(state.get("reverse")))
-				dateSort = bool(state.get("dateSort", False))
-				if hasattr(vm, "_serrebiDateSort"):
+				dateSort = state.get("dateSort")
+				dateSort = dateSort if type(dateSort) is bool else None
+				if dialog.columnFilterCtrl.GetCount() >= len(sortFields) * 2 + 2:
 					vm._serrebiDateSort = dateSort
-					if dateSort:
-						choice = len(sortFields) * 2 + bool(state.get("reverse"))
-						if choice < dialog.columnFilterCtrl.GetCount():
-							dialog.columnFilterCtrl.SetSelection(choice)
-				if _getSetting("rememberPosition"):
-					positionState = storeState.get("tabs", {}).get(tab, {})
-					vm._serrebiPendingSelection = positionState.get("selected")
+					if dateSort is not None:
+						dialog.columnFilterCtrl.SetSelection(len(sortFields) * 2 + int(dateSort))
 				dialog._setListLabels()
-			refresh()
 			if _getSetting("rememberPosition"):
 				positionState = storeState.get("tabs", {}).get(tab, {})
-				if mode == "default":
-					vm._serrebiPendingSelection = positionState.get("selected")
+				vm._serrebiPendingSelection = positionState.get("selected")
+			refresh()
+			if _getSetting("rememberPosition"):
 				if tab not in ("AVAILABLE", "UPDATE"):
 					wx.CallAfter(restorePending, vm)
 		finally:

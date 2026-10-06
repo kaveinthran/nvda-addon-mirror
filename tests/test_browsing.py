@@ -71,6 +71,9 @@ class BrowsingTests(unittest.TestCase):
         self.assertEqual("someAddon-stable", state["selected"])
         self.assertEqual(["github", "russian"], state["sources"])
         self.assertEqual("தமிழ்", state["search"])
+        for dateSort in (None, False, True):
+            vm._serrebiDateSort = dateSort
+            self.assertIs(dateSort, self.module._snapshot(types.SimpleNamespace(_storeVM=store))["dateSort"])
         self.assertTrue(state["dateSort"])
 
     def test_secure_and_unknown_context_fail_closed(self):
