@@ -157,6 +157,9 @@ class BrowsingTests(unittest.TestCase):
                 pass
 
         class Control:
+            def _refreshSelection(self):
+                self._addonsListVM.setSelection(None)
+
             def _refreshColumns(self):
                 pass
 
@@ -223,6 +226,20 @@ class BrowsingTests(unittest.TestCase):
             vm.setSelection(0)
             self.assertIsNone(vm._serrebiPendingSelection)
             self.assertEqual("first", vm.selectedAddonId)
+
+    def test_core_loading_selection_event_does_not_cancel_saved_selection(self):
+        modules, plugin, _, ListVM, Settings, _, _, _, _ = self._makeAdapter()
+        with mock.patch.dict(sys.modules, modules):
+            self.module.enable(plugin, Settings)
+            vm = ListVM()
+            vm._addonsFilteredOrdered = []
+            vm._serrebiPendingSelection = "saved"
+            control = modules["gui.addonStoreGui.controls.addonList"].AddonVirtualList()
+            control._addonsListVM = vm
+            control._refreshSelection()
+            self.assertEqual("saved", vm._serrebiPendingSelection)
+            vm.setSelection(None)
+            self.assertIsNone(vm._serrebiPendingSelection)
 
     def test_adapter_persists_session_state_when_restart_memory_is_enabled_later(self):
         modules, plugin, Dialog, ListVM, Settings, Field, Channel, Enabled, Action = self._makeAdapter()

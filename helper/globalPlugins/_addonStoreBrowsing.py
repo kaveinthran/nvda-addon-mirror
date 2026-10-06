@@ -269,6 +269,7 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 	originalColumns = controlClass._refreshColumns
 	originalText = controlClass.OnGetItemText
 	originalClick = controlClass.OnColClick
+	originalRefreshSelection = getattr(controlClass, "_refreshSelection", None)
 	originalSettings = settingsPanel.makeSettings
 	originalSave = settingsPanel.onSave
 	originalTerminate = plugin.terminate
@@ -343,6 +344,17 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		if not getattr(vm, "_serrebiApplyingSelection", False):
 			vm._serrebiPendingSelection = None
 		return originalSetSelection(vm, index)
+
+	def refreshSelection(control):
+		vm = control._addonsListVM
+		previous = getattr(vm, "_serrebiApplyingSelection", False)
+		# Core emits selection events while synchronizing its list, including
+		# deselection for an empty loading list. Those are not user intervention.
+		vm._serrebiApplyingSelection = True
+		try:
+			return originalRefreshSelection(control)
+		finally:
+			vm._serrebiApplyingSelection = previous
 
 	def filtered(vm):
 		ordered = originalFilter(vm)
@@ -511,6 +523,8 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		originalTerminate()
 
 	try:
+		if originalRefreshSelection is not None:
+			plugin._rememberPatch(controlClass, "_refreshSelection", refreshSelection)
 		for owner, name, replacement in (
 			(dialogClass, "__init__", initDialog), (dialogClass, "onListTabPageChange", tabChange),
 			(dialogClass, "_createFilterControls", createControls),
