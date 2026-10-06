@@ -329,6 +329,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		for enable in (
 			self._enableDeferredSearch,
 			self._enableDuplicateInstallWarning,
+			self._enableBrowsingPreferences,
 		):
 			try:
 				enable()
@@ -336,6 +337,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				log.exception(
 					f"SerrebiRadio store mirror could not enable {enable.__name__}",
 				)
+
+	def _enableBrowsingPreferences(self):
+		try:
+			from . import _addonStoreBrowsing
+		except ImportError:
+			return
+		_addonStoreBrowsing.enable(self, SerrebiStoreSettingsPanel)
 
 	def _enableDeferredSearch(self):
 		"""Let the store list filter on demand instead of on every keystroke.
