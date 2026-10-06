@@ -49,6 +49,14 @@ class DiscoveryTests(unittest.TestCase):
 		self.assertIsNone(discovery.githubRepository("http://github.com/owner/repo"))
 		self.assertIsNone(discovery.githubRepository("https://github.com/owner/repo/issues"))
 		self.assertIsNone(discovery.githubRepository("https://user@github.com/owner/repo"))
+		for suffix in ("?download=1", "#fragment"):
+			self.assertIsNone(discovery.githubRepository("https://github.com/owner/repo" + suffix))
+		self.assertIsNone(discovery.githubRepository("https://github.com:444/owner/repo"))
+		self.assertIsNone(discovery.githubRepository("https://github.com:invalid/owner/repo"))
+
+	def test_missing_author_identity_has_no_invented_matches(self):
+		selected = model("one", "One")
+		self.assertEqual([], discovery.authorMatches(selected, [selected, model("two", "Two")]))
 
 	def test_clone_uses_argument_vector_and_refuses_existing_destination(self):
 		with mock.patch.object(discovery.subprocess, "run") as run:

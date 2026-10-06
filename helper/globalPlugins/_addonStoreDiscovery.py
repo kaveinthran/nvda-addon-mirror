@@ -36,6 +36,11 @@ def githubRepository(value):
 	if value is None:
 		return None
 	parsed = urlparse(value)
+	try:
+		if parsed.port not in (None, 443) or parsed.query or parsed.fragment:
+			return None
+	except ValueError:
+		return None
 	if parsed.hostname is None or parsed.hostname.casefold() != "github.com":
 		return None
 	parts = [part for part in parsed.path.split("/") if part]

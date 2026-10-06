@@ -1098,6 +1098,27 @@ class HelperInitTerminateTests(unittest.TestCase):
             "config": self.config,
         }
 
+    def test_discovery_and_later_actions_unwind_in_one_patch_registry(self):
+        helper = self._loadHelper({})
+        discovery = types.ModuleType("globalPlugins._addonStoreDiscovery")
+        storeModule = types.ModuleType("gui.addonStoreGui.viewModels.store")
+        original = lambda self: []
+        storeModule.AddonStoreVM = type("Store", (), {"_makeActionsList": original})
+        actionModule = types.ModuleType("gui.addonStoreGui.viewModels.action")
+        actionModule.AddonActionVM = object
+        plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+        plugin._sourceSupportPatches = []
+        with mock.patch.dict(sys.modules, {
+            "globalPlugins._addonStoreDiscovery": discovery,
+            "gui.addonStoreGui.viewModels.store": storeModule,
+            "gui.addonStoreGui.viewModels.action": actionModule,
+        }):
+            plugin._enableDiscovery()
+        self.assertIsNot(original, storeModule.AddonStoreVM._makeActionsList)
+        plugin._rememberPatch(storeModule.AddonStoreVM, "_makeActionsList", lambda self: ["later"])
+        plugin._restoreSourceSupport()
+        self.assertIs(original, storeModule.AddonStoreVM._makeActionsList)
+
     def test_init_wires_everything_and_terminate_unwinds(self):
         helper = self._loadHelper({})
         fakes = self._fullFakes()

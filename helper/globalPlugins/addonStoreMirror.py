@@ -92,7 +92,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self):
 		super().__init__()
 		self._sourceSupportPatches = []
-		self._discoveryPatches = []
 		self._discoveryGeneration = 0
 		self._toolsMenuItems = []
 		self._movedStoreItem = None
@@ -315,7 +314,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._discoveryGeneration += 1
 		self._removeToolsMenuItems()
 		self._unregisterSettingsPanel()
-		self._restoreDiscovery()
 		self._restoreSourceSupport()
 		if not self._urlApplied:
 			return
@@ -342,16 +340,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				log.exception(
 					f"SerrebiRadio store mirror could not enable {enable.__name__}",
 				)
-
-	def _restoreDiscovery(self):
-		for owner, name, original, replacement in reversed(self._discoveryPatches):
-			try:
-				current = owner.__dict__.get(name, None)
-			except AttributeError:
-				current = getattr(owner, name, None)
-			if current is replacement:
-				setattr(owner, name, original)
-		self._discoveryPatches.clear()
 
 	def _isSecureDesktop(self):
 		try:
@@ -419,11 +407,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			))
 			return actions
 
-		self._rememberDiscoveryPatch(vmClass, "_makeActionsList", original, makeActionsList)
-
-	def _rememberDiscoveryPatch(self, owner, name, original, replacement):
-		setattr(owner, name, replacement)
-		self._discoveryPatches.append((owner, name, original, replacement))
+		self._rememberPatch(vmClass, "_makeActionsList", makeActionsList)
 
 	def _loadedModels(self, storeVM):
 		addons = getattr(getattr(storeVM, "listVM", None), "_addons", {})
@@ -437,8 +421,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			log.exception("Could not show Add-on Store discovery results")
 
 	def _showAuthorMatches(self, storeVM, item, discovery):
+		if self._isSecureDesktop():
+			return
 		matches = discovery.authorMatches(item.model, self._loadedModels(storeVM))
 		name = discovery.displayName(item.model)
+		if not matches:
+			# Translators: Catalog metadata cannot identify the selected add-on's author.
+			self._showResults(_("More by author"), [_("Author identity is unavailable in the loaded catalog.")])
+			return
 		if len(matches) <= 1:
 			self._showResults(_("More by author"), [
 				_("Only one add-on by this author in the loaded catalog: {name}.").format(name=name),
@@ -452,6 +442,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._showResults(_("More by author"), lines)
 
 	def _showSimilarMatches(self, storeVM, item, discovery):
+		if self._isSecureDesktop():
+			return
 		matches = discovery.similarMatches(item.model, self._loadedModels(storeVM))
 		if not matches:
 			self._showResults(_("More like this"), [_("No similar add-ons in the loaded catalog.")])
@@ -468,6 +460,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		return path if isinstance(path, str) and os.path.isdir(path) else None
 
 	def _openInstalledFolder(self, item):
+		if self._isSecureDesktop():
+			return
 		path = self._installedPath(item)
 		if path:
 			os.startfile(path)
@@ -480,10 +474,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			import ui
 			parentDialog = gui.mainFrame
 			picker = wx.DirDialog(parentDialog, message=_("Choose a folder for the repository clone"))
-			if picker.ShowModal() != wx.ID_OK:
-				return
-			parent = picker.GetPath()
-			picker.Destroy()
+			try:
+				if picker.ShowModal() != wx.ID_OK:
+					return
+				parent = picker.GetPath()
+			finally:
+				picker.Destroy()
 			repository = discovery.githubRepository(discovery.repositoryURL(item.model))[1]
 			destination = os.path.join(parent, repository)
 			if os.path.exists(destination):
@@ -493,6 +489,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			log.exception("Could not choose a repository clone destination")
 			return
 		generation = self._discoveryGeneration
+		ui.message(_("Cloning repository."))
 		def work():
 			try:
 				discovery.cloneRepository(discovery.repositoryURL(item.model), destination)
