@@ -16,13 +16,23 @@ download any `.nvda-addon` files.
    confirm it reports the cached notes if available. For a fresh lookup it
    reports a network failure while retaining current catalog notes. Rate-limit
    failures are identified separately.
-4. Sort by the Store's Date column both ways. Entries with a known source
+4. In Sort by column choose **Last updated (ascending)**, then **Last updated (descending)**.
+   Entries with a known source
    release time change order. Entries without one remain at the end in both
    directions. Check that the Source column still displays the source for the
    same rows and that its header remains informational.
 5. Close the Store and exit NVDA. Restart, reopen the Store, and check that it
    still opens normally. The release-note cache is intentionally in memory
    only, so it may query GitHub again after restart.
+6. Select an externally installed add-on whose manifest contains a changelog.
+   Expected: its native manifest notes are shown even without catalog history.
+7. Start a fresh changelog lookup and close the originating Store before it
+   finishes. Wait at least 12 seconds. Expected: no late modal opens. Reopen
+   and request another add-on's changelog; it must show that add-on's notes.
+8. Keep a source subset selected, clear the search and apply both Last updated
+   directions. Expected: sorting never brings excluded sources back. With
+   browsing memory enabled, reopen and verify both native and date sorts retain
+   their own selected direction.
 
 **Verified by automated tests:** GitHub repository URL rejection, unknown-date
 ordering, catalog/history precedence, explicit rate-limit fallback, and the
