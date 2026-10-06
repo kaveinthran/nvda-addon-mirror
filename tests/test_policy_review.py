@@ -8,7 +8,7 @@ import threading
 import types
 import unittest
 
-from tests.test_helper import HelperSourceSupportTests
+import tests.test_helper as helperTests
 
 
 _POLICY_PATH = Path(__file__).parents[1] / "helper" / "globalPlugins" / "_addonStorePolicy.py"
@@ -128,13 +128,49 @@ class PolicyReviewTests(unittest.TestCase):
 
 	def test_prepare_restore_keeps_active_request_on_its_old_source(self):
 		with tempfile.TemporaryDirectory() as directory:
-			router, network, _manager, _store, _baseURL, _seen = self._router(directory)
+			router, network, _manager, _store, baseURL, _seen = self._router(directory)
 			router._begin()
+			baseURL["value"] = "https://core-current.example"
+			router.prepareRestore()
+			self.assertEqual("https://core-current.example", network._getBaseURL())
+			with router.source(""):
+				self.assertEqual("https://official.example", network._getBaseURL())
 			with router.source("https://old-request.example"):
-				router.prepareRestore()
 				self.assertEqual("https://old-request.example", network._getBaseURL())
 			router._end()
-			self.assertEqual("https://official.example", network._getBaseURL())
+			self.assertEqual("https://core-current.example", network._getBaseURL())
+
+	def test_normal_policy_restore_keeps_records_for_source_restore(self):
+		fixture = helperTests.HelperSourceSupportTests()
+		helper = fixture._loadHelper({})
+		plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+		plugin._policyProfileSwitchRegistered = False
+		class StoreVM:
+			def __init__(self):
+				self.value = "native"
+		native = StoreVM.__init__
+		def policyInit(vm):
+			vm.value = "policy"
+		def outerFeatureInit(vm):
+			policyInit(vm)
+			vm.value = "outer"
+		StoreVM.__init__ = outerFeatureInit
+		prepared = []
+		router = types.SimpleNamespace(
+			prepareRestore=lambda: prepared.append(True),
+			owned={policyInit},
+		)
+		plugin._policyRouter = router
+		plugin._sourceSupportPatches = [
+			(StoreVM, "__init__", native, policyInit),
+			(StoreVM, "__init__", policyInit, outerFeatureInit),
+		]
+		originalRecords = list(plugin._sourceSupportPatches)
+		helper.GlobalPlugin._restoreStorePolicy(plugin)
+		self.assertEqual([True], prepared)
+		self.assertEqual(originalRecords, plugin._sourceSupportPatches)
+		helper.GlobalPlugin._restoreSourceSupport(plugin)
+		self.assertIs(native, StoreVM.__init__)
 
 	def test_post_patch_fetch_waits_for_pre_patch_initial_worker(self):
 		with tempfile.TemporaryDirectory() as directory:
@@ -151,7 +187,7 @@ class PolicyReviewTests(unittest.TestCase):
 			self.assertEqual([True], finished)
 
 	def test_profile_switch_callback_accepts_nvda_prev_conf_keyword(self):
-		fixture = HelperSourceSupportTests()
+		fixture = helperTests.HelperSourceSupportTests()
 		helper = fixture._loadHelper({})
 		plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
 		plugin._policyRouter = types.SimpleNamespace(defaultURL=None)
