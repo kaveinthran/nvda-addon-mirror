@@ -1,5 +1,6 @@
 """Source-aware routing for NVDA's shared Add-on Store metadata manager."""
 from __future__ import annotations
+
 import contextlib
 import contextvars
 import json
@@ -11,21 +12,34 @@ OFFICIAL = ""
 MIRROR = "https://serrebidev.github.io/nvda-addon-mirror"
 _source = contextvars.ContextVar("serrebiAddonStoreSource", default=None)
 
+
 def validCustomURL(value):
-	if not isinstance(value, str) or any(ord(char) < 32 for char in value): return None
-	parsed = urlparse(value.strip())
-	try: port = parsed.port
-	except ValueError: return None
-	if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password: return None
-	if parsed.query or parsed.fragment or (port is not None and not 1 <= port <= 65535): return None
-	return value.strip().rstrip("/")
+	if not isinstance(value, str):
+		return None
+	value = value.strip()
+	if any(char.isspace() or ord(char) < 32 for char in value):
+		return None
+	try:
+		parsed = urlparse(value)
+		port = parsed.port
+	except ValueError:
+		return None
+	if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+		return None
+	if parsed.query or parsed.fragment or (port is not None and not 1 <= port <= 65535):
+		return None
+	return value.rstrip("/")
 
 def selectedURL(settings):
 	policy = settings.get("storePolicy", "mirror")
-	if policy == "official": return OFFICIAL
-	if policy == "original": return settings.get("originalStoreURL", "")
-	if policy == "custom": return validCustomURL(settings.get("customStoreURL", "")) or MIRROR
+	if policy == "official":
+		return OFFICIAL
+	if policy == "original":
+		return settings.get("originalStoreURL", "")
+	if policy == "custom":
+		return validCustomURL(settings.get("customStoreURL", "")) or MIRROR
 	return MIRROR
+
 
 class Router:
 	"""Route and serialize core metadata calls without replacing its singleton."""
@@ -37,13 +51,18 @@ class Router:
 		self.active = 0
 		self.network = self.originalBaseURL = self.baseReplacement = self.hold = None
 		self.officialBaseURL = None
+
 	@contextlib.contextmanager
 	def source(self, url):
 		token = _source.set(url)
-		try: yield
-		finally: _source.reset(token)
+		try:
+			yield
+		finally:
+			_source.reset(token)
+
 	def currentURL(self):
 		return self.defaultURL if _source.get() is None else _source.get()
+
 	def install(self, network, dataManager, storeModule, patch):
 		self.network, self.originalBaseURL = network, network._getBaseURL
 		self.officialBaseURL = network._DEFAULT_BASE_URL
@@ -65,12 +84,14 @@ class Router:
 						result = _original(manager, *args, **kwargs)
 						self._remember(manager, url)
 						return result
-				finally: self._end()
+				finally:
+					self._end()
 			self._patch(patch, dataManager._DataManager, name, fetch)
 		for name in ("_cacheCompatibleAddons", "_cacheLatestAddons"):
 			original = getattr(dataManager._DataManager, name)
 			def cache(manager, *args, _original=original, _name=name, **kwargs):
-				path = manager._cacheCompatibleFile if _name.endswith("CompatibleAddons") else manager._cacheLatestFile
+				path = manager._cacheCompatibleFile \
+					if _name.endswith("CompatibleAddons") else manager._cacheLatestFile
 				before = self._fileStamp(path)
 				result = _original(manager, *args, **kwargs)
 				data = kwargs.get("addonData", args[0] if args else None)
@@ -83,8 +104,10 @@ class Router:
 		def getCached(manager, path, *args, **kwargs):
 			try:
 				with open(path, "r", encoding="utf-8") as file:
-					if json.load(file).get("serrebiStoreSource") != self.currentURL(): return None
-			except (AttributeError, OSError, ValueError): return None
+					if json.load(file).get("serrebiStoreSource") != self.currentURL():
+						return None
+			except (AttributeError, OSError, ValueError):
+				return None
 			return originalCached(manager, path, *args, **kwargs)
 		self._patch(patch, dataManager._DataManager, "_getCachedAddonData", getCached)
 		originalInit = storeModule.AddonStoreVM.__init__
@@ -97,20 +120,29 @@ class Router:
 			with self.source(getattr(vm, "_serrebiStoreURL", self.defaultURL)):
 				return originalFetch(vm, *args, **kwargs)
 		self._patch(patch, storeModule.AddonStoreVM, "_getAvailableAddonsInBG", fetchAvailable)
+
 	def _patch(self, patch, owner, name, replacement):
 		patch(owner, name, replacement)
 		self.owned.add(replacement)
+
 	def _waitForInitial(self):
 		initial = self.initialThread
-		if initial is not None and initial is not threading.current_thread() and initial.is_alive(): initial.join()
-	def _isInitial(self): return self.initialThread is threading.current_thread()
+		if initial is not None and initial is not threading.current_thread() and initial.is_alive():
+			initial.join()
+
+	def _isInitial(self):
+		return self.initialThread is threading.current_thread()
+
 	def _begin(self):
-		with self.activeLock: self.active += 1
+		with self.activeLock:
+			self.active += 1
+
 	def _end(self):
 		with self.activeLock:
 			self.active -= 1
 			if self.active == 0 and self.network and self.network._getBaseURL is self.hold:
 				self.network._getBaseURL = self.originalBaseURL
+
 	def _activate(self, manager, url):
 		state = self.caches.get(url)
 		if state is None:
@@ -122,20 +154,26 @@ class Router:
 				self.caches.pop(next(iter(self.caches)))
 			self.caches[url] = state
 		manager._latestAddonCache, manager._compatibleAddonCache = state
+
 	def _remember(self, manager, url):
 		self.caches[url] = (manager._latestAddonCache, manager._compatibleAddonCache)
+
 	def _fileStamp(self, path):
 		try:
 			return os.stat(path).st_mtime_ns
 		except OSError:
 			return None
+
 	def _markCacheFile(self, path):
 		try:
-			with open(path, "r", encoding="utf-8") as file: data = json.load(file)
+			with open(path, "r", encoding="utf-8") as file:
+				data = json.load(file)
 			data["serrebiStoreSource"] = self.currentURL()
-			with open(path, "w", encoding="utf-8") as file: json.dump(data, file, ensure_ascii=False)
+			with open(path, "w", encoding="utf-8") as file:
+				json.dump(data, file, ensure_ascii=False)
 		except (AttributeError, OSError, ValueError):
 			return
+
 	def prepareRestore(self):
 		with self.activeLock:
 			if self.active == 0 or self.network is None:

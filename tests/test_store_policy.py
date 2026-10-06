@@ -50,6 +50,8 @@ class StorePolicyTests(unittest.TestCase):
 		self.assertIsNone(policy.validCustomURL("https://example.org/?query"))
 		self.assertIsNone(policy.validCustomURL("https://example.org/#fragment"))
 		self.assertIsNone(policy.validCustomURL("https://example.org:70000"))
+		self.assertIsNone(policy.validCustomURL("https://[broken"))
+		self.assertIsNone(policy.validCustomURL("https://invalid host.example"))
 
 	def test_router_captures_fetch_source_and_official_uses_original_base(self):
 		seen = []

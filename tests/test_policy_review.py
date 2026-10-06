@@ -7,6 +7,7 @@ import tempfile
 import threading
 import types
 import unittest
+from unittest import mock
 
 import tests.test_helper as helperTests
 
@@ -18,6 +19,38 @@ _SPEC.loader.exec_module(policy)
 
 
 class PolicyReviewTests(unittest.TestCase):
+	def test_policy_installs_before_global_source_changes_and_preserves_empty_original(self):
+		fixture = helperTests.HelperSourceSupportTests()
+		helper = fixture._loadHelper({})
+		fixture.config.conf["addonStore"]["baseServerURL"] = helper.MIRROR_STORE_URL
+		fixture.config.conf["serrebiStore"] = {"originalStoreURL": "", "searchAsYouType": True}
+		seen = []
+		globalVars = types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False))
+		with mock.patch.dict(sys.modules, {"globalVars": globalVars}), \
+			mock.patch.object(helper.GlobalPlugin, "_enableStorePolicy", lambda self: seen.append(
+				fixture.config.conf["addonStore"]["baseServerURL"])), \
+			mock.patch.object(helper.GlobalPlugin, "_removeStaleBundleModule"), \
+			mock.patch.object(helper.GlobalPlugin, "_enableSourceSupport"), \
+			mock.patch.object(helper.GlobalPlugin, "_enableStoreEnhancements"), \
+			mock.patch.object(helper.GlobalPlugin, "_addToolsMenuItems"), \
+			mock.patch.object(helper.GlobalPlugin, "_registerSettingsPanel"), \
+			mock.patch.object(helper.GlobalPlugin, "_refreshStore"):
+			plugin = helper.GlobalPlugin()
+		self.assertEqual([helper.MIRROR_STORE_URL], seen)
+		self.assertEqual("", plugin._originalURL)
+		self.assertEqual("", fixture.config.conf["serrebiStore"]["originalStoreURL"])
+
+	def test_secure_startup_changes_no_policy_or_store_state(self):
+		fixture = helperTests.HelperSourceSupportTests()
+		helper = fixture._loadHelper({})
+		globalVars = types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=True))
+		with mock.patch.dict(sys.modules, {"globalVars": globalVars}):
+			plugin = helper.GlobalPlugin()
+		self.assertFalse(plugin._urlApplied)
+		self.assertEqual([], plugin._sourceSupportPatches)
+		self.assertEqual("", fixture.config.conf["addonStore"]["baseServerURL"])
+		self.assertNotIn("originalStoreCaptured", fixture.config.conf["serrebiStore"])
+
 	def _router(self, directory, defaultURL="https://mirror.example"):
 		baseURL = {"value": "https://official.example"}
 		seen = []

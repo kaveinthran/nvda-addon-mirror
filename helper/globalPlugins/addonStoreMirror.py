@@ -86,7 +86,7 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 		self._searchAsYouTypeCheckBox.SetValue(bool(searchAsYouType))
 		if not callable(getattr(wx, "Choice", None)):
 			return
-		add = getattr(settingsSizer, "addItem", settingsSizer.Add)
+		add = getattr(settingsSizer, "addItem", None) or settingsSizer.Add
 		add(wx.StaticText(self, label=_("&Default add-on store:")))
 		self._storePolicyChoice = wx.Choice(
 			self,
@@ -97,7 +97,8 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 			],
 		)
 		policy = config.conf["serrebiStore"].get("storePolicy", "mirror")
-		self._storePolicyChoice.SetSelection({"mirror": 0, "official": 1, "custom": 2, "original": 3}.get(policy, 0))
+		policies = {"mirror": 0, "official": 1, "custom": 2, "original": 3}
+		self._storePolicyChoice.SetSelection(policies.get(policy, 0))
 		add(self._storePolicyChoice)
 		add(wx.StaticText(self, label=_("&Custom store HTTPS URL:")))
 		self._customStoreURL = wx.TextCtrl(
@@ -108,7 +109,7 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 		self._automaticUpdatesChoice = wx.Choice(
 			self,
 			# Translators: Selects NVDA's native automatic add-on update behavior.
-			choices=[_("Notify"), _("Update"), _("Disabled")],
+			choices=[_("Notify"), _("Update automatically"), _("Disabled (manual checks)")],
 		)
 		updates = config.conf["addonStore"].get("automaticUpdates", "notify")
 		self._automaticUpdatesChoice.SetSelection({"notify": 0, "update": 1, "disabled": 2}.get(updates, 0))
@@ -165,6 +166,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._urlApplied = False
 		self._policyRouter = None
 		self._policyProfileSwitchRegistered = False
+		try:
+			import globalVars
+			if globalVars.appArgs.secure:
+				return
+		except ImportError:
+			# Standalone unit-test loaders do not provide NVDA's startup arguments.
+			pass
 		self._removeStaleBundleModule()
 		try:
 			currentURL = config.conf["addonStore"]["baseServerURL"]
@@ -185,7 +193,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		# the mirror itself. Older helper builds could already have done that;
 		# NVDA's empty default means "use the official store" and is safe here.
 		if not config.conf["serrebiStore"].get("originalStoreCaptured", False):
-			self._originalURL = savedURL if currentURL == MIRROR_STORE_URL and savedURL else currentURL
+			if currentURL == MIRROR_STORE_URL:
+				self._originalURL = "" if savedURL == MIRROR_STORE_URL else savedURL
+			else:
+				self._originalURL = currentURL
 			config.conf["serrebiStore"]["originalStoreURL"] = self._originalURL
 			config.conf["serrebiStore"]["originalStoreCaptured"] = True
 		else:
@@ -195,11 +206,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			configuredURL = selectedURL(config.conf["serrebiStore"])
 		except ImportError:
 			configuredURL = MIRROR_STORE_URL
+		# Install routing before changing global configuration: the initial core
+		# worker must keep the same source for its hash and catalog requests.
+		self._enableStorePolicy()
 		config.conf["addonStore"]["baseServerURL"] = configuredURL
 		self._urlApplied = True
 		log.info(f"Set the Add-on store mirror to: {MIRROR_STORE_URL}")
 		self._enableSourceSupport()
-		self._enableStorePolicy()
 		self._enableStoreEnhancements()
 		self._addToolsMenuItems()
 		self._registerSettingsPanel()
