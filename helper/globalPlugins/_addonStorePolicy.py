@@ -143,6 +143,9 @@ class Router:
 			if self.network._getBaseURL is not self.baseReplacement:
 				return
 			def hold():
-				return self.currentURL() or self.officialBaseURL
+				if self._isInitial():
+					return self.initialURL or self.officialBaseURL
+				url = _source.get()
+				return self.originalBaseURL() if url is None else url or self.officialBaseURL
 			self.hold = hold
 			self.network._getBaseURL = hold

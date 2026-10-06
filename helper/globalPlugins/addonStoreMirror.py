@@ -430,12 +430,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				initialThread=getattr(manager, "_initialiseAvailableAddonsThread", None),
 				initialURL=self._initialCoreURL,
 			)
-			router.install(network, dataManager, store, self._rememberPatch)
 			self._policyRouter = router
+			router.install(network, dataManager, store, self._rememberPatch)
 			_activePolicyRouter = router
 			self._registerPolicyProfileSwitch()
 		except Exception:
-			self._restoreStorePolicy()
+			self._restoreStorePolicy(rollback=True)
 			return
 
 	def _registerPolicyProfileSwitch(self):
@@ -457,7 +457,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		except (ImportError, KeyError):
 			return
 
-	def _restoreStorePolicy(self):
+	def _restoreStorePolicy(self, rollback=False):
 		global _activePolicyRouter
 		if self._policyProfileSwitchRegistered:
 			try:
@@ -468,15 +468,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		router = self._policyRouter
 		if router is not None:
 			router.prepareRestore()
-		for owner, name, original, replacement in reversed(self._sourceSupportPatches[:]):
-			if router is None or replacement not in router.owned:
-				continue
-			if getattr(owner, name, None) is replacement:
-				setattr(owner, name, original)
-		self._sourceSupportPatches[:] = [
-			patch for patch in self._sourceSupportPatches
-			if router is None or patch[3] not in router.owned
-		]
+		if rollback and router is not None:
+			for owner, name, original, replacement in reversed(self._sourceSupportPatches[:]):
+				if replacement in router.owned and getattr(owner, name, None) is replacement:
+					setattr(owner, name, original)
+			self._sourceSupportPatches[:] = [
+				patch for patch in self._sourceSupportPatches if patch[3] not in router.owned
+			]
 		self._policyRouter = None
 		_activePolicyRouter = None
 
