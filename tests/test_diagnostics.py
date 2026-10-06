@@ -24,6 +24,30 @@ def loadDiagnostics(extraModules=None):
 
 
 class DiagnosticsEvidenceTests(unittest.TestCase):
+	def test_pending_log_callback_is_discarded_after_selection_changes(self):
+		diagnostics = loadDiagnostics()
+		callbacks = []
+		diagnostics.wx.NOT_FOUND = -1
+		diagnostics.wx.CallAfter = callbacks.append
+		dialog = object.__new__(diagnostics.DiagnosticsDialog)
+		dialog._generation = 0
+		dialog._list = types.SimpleNamespace(GetSelection=lambda: 0)
+		dialog._items = [{
+			"addonId": "one", "addon": types.SimpleNamespace(path="G:/addons/one"),
+			"loaded": [], "configured": "configured enabled",
+		}]
+		dialog._evidence = types.SimpleNamespace(SetValue=lambda value: None, AppendText=mock.Mock())
+		dialog.IsBeingDeleted = lambda: False
+		thread = lambda **kwargs: types.SimpleNamespace(start=kwargs["target"])
+		with mock.patch.object(diagnostics, "isSecureDesktop", return_value=False), \
+			mock.patch.object(diagnostics.threading, "Thread", side_effect=thread), \
+			mock.patch.object(diagnostics, "relatedLogEvidence", return_value=(["old selected log"], "note")), \
+			mock.patch.object(builtins, "_", lambda text: text, create=True):
+			dialog._readRelatedLogs(None)
+			dialog._showEvidence(None)
+			callbacks[0]()
+		dialog._evidence.AppendText.assert_not_called()
+
 	def test_loaded_modules_are_mapped_by_real_addon_path(self):
 		diagnostics = loadDiagnostics()
 		addon = types.SimpleNamespace(path="G:/addons/example")

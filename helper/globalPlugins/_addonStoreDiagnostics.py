@@ -151,13 +151,22 @@ class DiagnosticsDialog(wx.Dialog):
 			),
 		)
 		sizer.Add(intro, 0, wx.ALL | wx.EXPAND, 10)
+		# Translators: Label for the installed add-on checklist.
+		sizer.Add(wx.StaticText(self, label=_("&Installed add-ons:")), 0, wx.LEFT | wx.RIGHT, 10)
 		self._list = wx.CheckListBox(self, choices=[self._label(item) for item in self._items])
 		for index, item in enumerate(self._items):
 			self._list.Check(index, item["addonId"] != helperAddonId and item["configured"] == "configured enabled")
 		self._list.Bind(wx.EVT_LISTBOX, self._showEvidence)
 		self.Bind(wx.EVT_WINDOW_DESTROY, self._onDestroy)
 		sizer.Add(self._list, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, 10)
-		sizer.Add(wx.StaticText(self, label=_("Evidence for selected add-on:")), 0, wx.ALL, 10)
+		for checked, label in (
+			(True, _("Check &all enabled add-ons")),
+			(False, _("&Uncheck all add-ons")),
+		):
+			button = wx.Button(self, label=label)
+			button.Bind(wx.EVT_BUTTON, lambda evt, checked=checked: self._checkAll(checked))
+			sizer.Add(button, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
+		sizer.Add(wx.StaticText(self, label=_("&Evidence for selected add-on:")), 0, wx.ALL, 10)
 		self._evidence = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
 		sizer.Add(self._evidence, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, 10)
 		viewLogsButton = wx.Button(self, label=_("View related current-session log evidence"))
@@ -184,7 +193,21 @@ class DiagnosticsDialog(wx.Dialog):
 	def _label(self, item):
 		return "%s (%s): %s" % (item["name"], item["addonId"], item["configured"])
 
+	def _checkAll(self, checked):
+		if isSecureDesktop():
+			return
+		count = 0
+		for index, item in enumerate(self._items):
+			value = checked and item["configured"] == "configured enabled"
+			value = value and item["addonId"] != self._helperAddonId
+			self._list.Check(index, value)
+			count += bool(value)
+		import ui
+		# Translators: Number of installed add-ons checked for the disable preview.
+		ui.message(_("{count} add-ons checked.").format(count=count))
+
 	def _showEvidence(self, evt):
+		self._generation += 1
 		index = self._list.GetSelection()
 		if index == wx.NOT_FOUND:
 			return
@@ -207,6 +230,7 @@ class DiagnosticsDialog(wx.Dialog):
 		if index == wx.NOT_FOUND:
 			return
 		item = self._items[index]
+		self._generation += 1
 		generation = self._generation
 		try:
 			import globalVars
