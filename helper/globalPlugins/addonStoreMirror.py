@@ -29,9 +29,13 @@ MIRROR_STORE_URL = "https://serrebidev.github.io/nvda-addon-mirror"
 OFFICIAL_STORE_URL = ""
 STORE_SOURCE_KEY = "storeSource"
 MODEL_SOURCE_ATTRIBUTE = "_serrebiStoreSource"
+_activePolicyRouter = None
 
 confspec = {
 	"originalStoreURL": "string(default='')",
+	"originalStoreCaptured": "boolean(default=False)",
+	"storePolicy": "string(default='mirror')",
+	"customStoreURL": "string(default='')",
 	"searchAsYouType": "boolean(default=True)",
 }
 config.conf.spec["serrebiStore"] = confspec
@@ -80,11 +84,71 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 			settingsSizer.Add(checkBox)
 			self._searchAsYouTypeCheckBox = checkBox
 		self._searchAsYouTypeCheckBox.SetValue(bool(searchAsYouType))
+		if not callable(getattr(wx, "Choice", None)):
+			return
+		self._storePolicyChoice = wx.Choice(
+			self,
+			# Translators: Selects the metadata store used for browsing and future update checks.
+			choices=[
+				_("Mirror"), _("Official NVDA store"), _("Custom HTTPS URL"),
+				_("Original store"),
+			],
+		)
+		policy = config.conf["serrebiStore"].get("storePolicy", "mirror")
+		self._storePolicyChoice.SetSelection({"mirror": 0, "official": 1, "custom": 2, "original": 3}.get(policy, 0))
+		self._customStoreURL = wx.TextCtrl(self, value=config.conf["serrebiStore"].get("customStoreURL", ""))
+		add = getattr(settingsSizer, "addItem", settingsSizer.Add)
+		add(wx.StaticText(self, label=_("Default add-on store:")))
+		add(self._storePolicyChoice)
+		add(wx.StaticText(self, label=_("Custom store HTTPS URL:")))
+		add(self._customStoreURL)
+		self._automaticUpdatesChoice = wx.Choice(
+			self,
+			# Translators: Selects NVDA's native automatic add-on update behavior.
+			choices=[_("Notify"), _("Update"), _("Disabled")],
+		)
+		updates = config.conf["addonStore"].get("automaticUpdates", "notify")
+		self._automaticUpdatesChoice.SetSelection({"notify": 0, "update": 1, "disabled": 2}.get(updates, 0))
+		add(wx.StaticText(self, label=_("Automatic add-on updates:")))
+		add(self._automaticUpdatesChoice)
 
 	def onSave(self):
 		config.conf["serrebiStore"]["searchAsYouType"] = (
 			self._searchAsYouTypeCheckBox.IsChecked()
 		)
+		if not hasattr(self, "_storePolicyChoice"):
+			return
+		policy = ("mirror", "official", "custom", "original")[self._storePolicyChoice.GetSelection()]
+		custom = self._customStoreURL.GetValue().strip()
+		config.conf["serrebiStore"]["storePolicy"] = policy
+		config.conf["serrebiStore"]["customStoreURL"] = custom
+		config.conf["addonStore"]["automaticUpdates"] = (
+			"notify", "update", "disabled"
+		)[self._automaticUpdatesChoice.GetSelection()]
+		try:
+			from globalPlugins._addonStorePolicy import selectedURL
+			url = selectedURL(config.conf["serrebiStore"])
+			config.conf["addonStore"]["baseServerURL"] = url
+			if _activePolicyRouter is not None:
+				_activePolicyRouter.defaultURL = url
+		except ImportError:
+			pass
+
+	def isValid(self):
+		if not hasattr(self, "_storePolicyChoice"):
+			return True
+		if self._storePolicyChoice.GetSelection() == 2:
+			try:
+				from globalPlugins._addonStorePolicy import validCustomURL
+				valid = validCustomURL(self._customStoreURL.GetValue().strip()) is not None
+			except ImportError:
+				valid = False
+			if not valid:
+				import ui
+				ui.message(_("Custom store URL must be a valid HTTPS URL."))
+				self._customStoreURL.SetFocus()
+				return False
+		return True
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -97,6 +161,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._settingsPanelRegistered = False
 		self._originalURL = ""
 		self._urlApplied = False
+		self._policyRouter = None
+		self._policyProfileSwitchRegistered = False
 		self._removeStaleBundleModule()
 		try:
 			currentURL = config.conf["addonStore"]["baseServerURL"]
@@ -115,15 +181,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		# this mirror, so do not overwrite the remembered official/custom URL with
 		# the mirror itself. Older helper builds could already have done that;
 		# NVDA's empty default means "use the official store" and is safe here.
-		if currentURL != MIRROR_STORE_URL:
-			self._originalURL = currentURL
-			config.conf["serrebiStore"]["originalStoreURL"] = currentURL
+		if not config.conf["serrebiStore"].get("originalStoreCaptured", False):
+			self._originalURL = savedURL if currentURL == MIRROR_STORE_URL and savedURL else currentURL
+			config.conf["serrebiStore"]["originalStoreURL"] = self._originalURL
+			config.conf["serrebiStore"]["originalStoreCaptured"] = True
 		else:
-			self._originalURL = "" if savedURL == MIRROR_STORE_URL else savedURL
-		config.conf["addonStore"]["baseServerURL"] = MIRROR_STORE_URL
+			self._originalURL = savedURL
+		try:
+			from globalPlugins._addonStorePolicy import selectedURL
+			configuredURL = selectedURL(config.conf["serrebiStore"])
+		except ImportError:
+			configuredURL = MIRROR_STORE_URL
+		config.conf["addonStore"]["baseServerURL"] = configuredURL
 		self._urlApplied = True
 		log.info(f"Set the Add-on store mirror to: {MIRROR_STORE_URL}")
 		self._enableSourceSupport()
+		self._enableStorePolicy()
 		self._enableStoreEnhancements()
 		self._addToolsMenuItems()
 		self._registerSettingsPanel()
@@ -292,11 +365,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				return
 
 			def refresh():
-				# Core starts an initial fetch before global plugins load. Let that
-				# finish, then fetch again using the newly configured mirror URL.
-				initial = getattr(manager, "_initialiseAvailableAddonsThread", None)
-				if initial is not None and initial.is_alive():
-					initial.join()
+				# Do not join NVDA's initial worker. The source router serializes
+				# metadata operations and an initial request must never block the UI.
 				if dataManager.addonDataManager is manager:
 					manager.getLatestCompatibleAddons()
 
@@ -309,6 +379,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			log.exception("Failed to refresh the add-on store data manager")
 
 	def terminate(self):
+		global _activePolicyRouter
+		self._restoreStorePolicy()
 		self._removeToolsMenuItems()
 		self._unregisterSettingsPanel()
 		self._restoreSourceSupport()
@@ -336,6 +408,72 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				log.exception(
 					f"SerrebiRadio store mirror could not enable {enable.__name__}",
 				)
+
+	def _enableStorePolicy(self):
+		global _activePolicyRouter
+		try:
+			import globalVars
+			if globalVars.appArgs.secure:
+				return
+			from addonStore import dataManager, network
+			from gui.addonStoreGui.viewModels import store
+			from globalPlugins._addonStorePolicy import Router, selectedURL
+			manager = dataManager.addonDataManager
+			if manager is None:
+				return
+			self._policyPatchStart = len(self._sourceSupportPatches)
+			router = Router(selectedURL(config.conf["serrebiStore"]))
+			router.install(network, dataManager, store, self._rememberPatch)
+			self._policyRouter = router
+			_activePolicyRouter = router
+			self._registerPolicyProfileSwitch()
+			self._initializePolicyCaches(dataManager, manager, router)
+		except Exception:
+			self._restoreStorePolicy()
+			return
+
+	def _initializePolicyCaches(self, dataManager, manager, router):
+		def initialise():
+			initial = getattr(manager, "_initialiseAvailableAddonsThread", None)
+			if initial is not None and initial is not threading.current_thread():
+				initial.join()
+			if dataManager.addonDataManager is manager and self._policyRouter is router:
+				with router.source(router.defaultURL):
+					manager._latestAddonCache = manager._getCachedAddonData(manager._cacheLatestFile)
+					manager._compatibleAddonCache = manager._getCachedAddonData(manager._cacheCompatibleFile)
+		threading.Thread(target=initialise, name="initialiseStorePolicy", daemon=True).start()
+
+	def _registerPolicyProfileSwitch(self):
+		callback = getattr(config, "post_configProfileSwitch", None)
+		if callback is not None and not self._policyProfileSwitchRegistered:
+			callback.register(self._onPolicyProfileSwitch)
+			self._policyProfileSwitchRegistered = True
+
+	def _onPolicyProfileSwitch(self):
+		try:
+			from globalPlugins._addonStorePolicy import selectedURL
+			url = selectedURL(config.conf["serrebiStore"])
+			config.conf["addonStore"]["baseServerURL"] = url
+			if self._policyRouter is not None:
+				self._policyRouter.defaultURL = url
+		except (ImportError, KeyError):
+			return
+
+	def _restoreStorePolicy(self):
+		global _activePolicyRouter
+		if self._policyProfileSwitchRegistered:
+			try:
+				config.post_configProfileSwitch.unregister(self._onPolicyProfileSwitch)
+			except (AttributeError, KeyError):
+				pass
+			self._policyProfileSwitchRegistered = False
+		start = getattr(self, "_policyPatchStart", len(self._sourceSupportPatches))
+		for owner, name, original, replacement in reversed(self._sourceSupportPatches[start:]):
+			if getattr(owner, name, None) is replacement:
+				setattr(owner, name, original)
+		del self._sourceSupportPatches[start:]
+		self._policyRouter = None
+		_activePolicyRouter = None
 
 	def _enableDeferredSearch(self):
 		"""Let the store list filter on demand instead of on every keystroke.
@@ -640,9 +778,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._settingsPanelRegistered = False
 
 	def _onBrowseOfficialStore(self, evt):
-		# An empty baseServerURL is NVDA's official store; switch back to the
-		# mirror when that dialog closes.
-		self._openStore(OFFICIAL_STORE_URL, restoreURL=MIRROR_STORE_URL)
+		# An empty baseServerURL is NVDA's official store. Restore the selected
+		# default, which may be the mirror, original, or a custom HTTPS source.
+		try:
+			from globalPlugins._addonStorePolicy import selectedURL
+			restoreURL = selectedURL(config.conf["serrebiStore"])
+		except ImportError:
+			restoreURL = MIRROR_STORE_URL
+		self._openStore(OFFICIAL_STORE_URL, restoreURL=restoreURL)
 
 	def _openStore(self, url, restoreURL):
 		"""Open the Add-on Store at the given URL.
@@ -663,7 +806,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		previousURL = config.conf["addonStore"]["baseServerURL"]
 		config.conf["addonStore"]["baseServerURL"] = url
 		try:
-			storeVM = AddonStoreVM()
+			policyRouter = getattr(self, "_policyRouter", None)
+			if policyRouter is None:
+				storeVM = AddonStoreVM()
+			else:
+				with policyRouter.source(url):
+					storeVM = AddonStoreVM()
 			storeVM.refresh()
 			prePopup = getattr(gui.mainFrame, "prePopup", None)
 			if prePopup is not None:
