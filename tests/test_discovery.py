@@ -54,6 +54,10 @@ class DiscoveryTests(unittest.TestCase):
 		self.assertIsNone(discovery.githubRepository("https://github.com:444/owner/repo"))
 		self.assertIsNone(discovery.githubRepository("https://github.com:invalid/owner/repo"))
 
+	def test_cross_field_similarity_has_an_explanation(self):
+		matches = discovery.similarMatches(model("one", "Network"), [model("two", "Tools", "Network")])
+		self.assertEqual(("title/description terms: network",), matches[0][1])
+
 	def test_missing_author_identity_has_no_invented_matches(self):
 		selected = model("one", "One")
 		self.assertEqual([], discovery.authorMatches(selected, [selected, model("two", "Two")]))

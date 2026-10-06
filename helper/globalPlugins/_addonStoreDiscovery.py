@@ -140,6 +140,8 @@ def similarMatches(selectedModel, models, limit=12):
 			reasons.append("title: " + ", ".join(sharedTitle[:4]))
 		if sharedDescription:
 			reasons.append("description: " + ", ".join(sharedDescription[:4]))
+		if not reasons:
+			reasons.append("title/description terms: " + ", ".join(shared[:4]))
 		results.append((score, displayName(model).casefold(), addonId, model, tuple(reasons)))
 	results.sort(key=lambda item: (-item[0], item[1], item[2]))
 	return [(item[3], item[4], item[0]) for item in results[:limit]]
@@ -157,7 +159,7 @@ def cloneRepository(url, destination, timeout=120):
 			["git", "clone", "--", url, destination],
 			stdin=subprocess.DEVNULL,
 			stdout=subprocess.DEVNULL,
-			stderr=subprocess.PIPE,
+			stderr=subprocess.DEVNULL,
 			timeout=timeout,
 			check=False,
 			creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
