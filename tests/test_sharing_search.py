@@ -1,6 +1,7 @@
 import builtins
 import types
 import unittest
+import weakref
 from unittest import mock
 
 from test_helper import HelperSourceSupportTests
@@ -224,6 +225,35 @@ class SharingSearchTests(unittest.TestCase):
             self.assertEqual("author", dialog._storeVM.listVM._serrebiSearchScope)
             self.assertEqual([(event, "pending")], applied)
             dialog.filter.assert_not_called()
+
+    def test_scope_and_close_callbacks_do_not_retain_destroyed_store(self):
+        plugin, _, ListVM, Dialog = self._makePlugin()
+
+        class Choice:
+            def SetSelection(self, index):
+                pass
+
+            def Bind(self, event, handler):
+                self.handler = handler
+
+        class Sizer:
+            def addLabeledControl(self, **kwargs):
+                return Choice()
+
+        with self._context(), mock.patch.object(builtins, "_", lambda text: text, create=True):
+            plugin._enableSharingAndScopedSearch()
+            dialog = Dialog()
+            dialog._storeVM = types.SimpleNamespace(listVM=ListVM({}))
+            dialog._createFilterControls(Sizer())
+            scopeHandler = dialog._serrebiSearchScopeCtrl.handler
+            closeHandler = plugin._makeCloseRestorer(dialog, "")
+            dialogRef = weakref.ref(dialog)
+            del dialog
+            self.assertIsNone(dialogRef(), "Handlers must allow immediate reopening without GC")
+            event = types.SimpleNamespace(Skip=mock.Mock(), GetEventObject=lambda: None)
+            scopeHandler(event)
+            closeHandler(event)
+            self.assertEqual(2, event.Skip.call_count)
 
     def test_clipboard_failure_and_secure_desktop(self):
         plugin, _, _, _ = self._makePlugin()

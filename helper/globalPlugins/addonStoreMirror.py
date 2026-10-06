@@ -14,6 +14,7 @@ import builtins
 import importlib
 import os
 import threading
+import weakref
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -421,9 +422,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 					choices=[allText, title, author, description, identifier, source],
 				)
 				dialog._serrebiSearchScopeCtrl.SetSelection(0)
+				dialogRef = weakref.ref(dialog)
+				def onScopeChange(evt):
+					current = dialogRef()
+					if current is not None:
+						plugin._onSearchScopeChange(current, evt)
+					else:
+						evt.Skip()
 				dialog._serrebiSearchScopeCtrl.Bind(
 					wx.EVT_CHOICE,
-					lambda evt: plugin._onSearchScopeChange(dialog, evt),
+					onScopeChange,
 				)
 
 			self._rememberPatch(storeClass, "_makeActionsList", makeActionsList)
@@ -505,11 +513,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			originalCreateFilterControls(dialog, *args, **kwargs)
 			searchCtrl = getattr(dialog, "searchFilterCtrl", None)
 			if searchCtrl is not None:
+				dialogRef = weakref.ref(dialog)
+				def onSearchKey(evt):
+					current = dialogRef()
+					if current is not None:
+						plugin._onSearchCharHook(current, evt)
+					else:
+						evt.Skip()
 				searchCtrl.Bind(
 					# Windows consumes Enter during dialog navigation before a
 					# plain TextCtrl receives EVT_KEY_DOWN. Catch it earlier.
 					wx.EVT_CHAR_HOOK,
-					lambda evt: plugin._onSearchCharHook(dialog, evt),
+					onSearchKey,
 				)
 
 		def onFilterTextChange(dialog, evt):
@@ -823,9 +838,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				postPopup()
 
 	def _makeCloseRestorer(self, dialog, restoreURL):
+		dialogRef = weakref.ref(dialog)
 		def onDestroy(evt):
 			# Destroy events from child controls reach the dialog too.
-			if evt.GetEventObject() is dialog:
+			current = dialogRef()
+			if current is not None and evt.GetEventObject() is current:
 				config.conf["addonStore"]["baseServerURL"] = restoreURL
 				self._refreshStore()
 			evt.Skip()

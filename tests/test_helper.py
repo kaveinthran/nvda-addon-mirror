@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import types
 import unittest
+import weakref
 from unittest import mock
 
 
@@ -341,6 +342,16 @@ class HelperDeferredSearchTests(unittest.TestCase):
     and the pending filter text is applied when Enter is pressed."""
 
     _loadHelper = HelperSourceSupportTests._loadHelper
+
+    def test_search_callback_does_not_retain_destroyed_store(self):
+        _helper, _plugin, dialog = self._makeDialogPlugin(searchAsYouType=False)
+        handler = dialog.searchFilterCtrl.binds[0][1]
+        dialogRef = weakref.ref(dialog)
+        del dialog
+        self.assertIsNone(dialogRef(), "Callback must allow immediate Store reopening without GC")
+        event = _FakeEvent(self.wx.wxEVT_TEXT)
+        handler(event)
+        self.assertTrue(event.skipped)
 
     def _makeDialogPlugin(self, searchAsYouType):
         class FakeSearchCtrl:
