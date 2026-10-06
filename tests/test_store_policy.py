@@ -54,6 +54,7 @@ class StorePolicyTests(unittest.TestCase):
 	def test_router_captures_fetch_source_and_official_uses_original_base(self):
 		seen = []
 		class Network:
+			_DEFAULT_BASE_URL = "https://official.example"
 			@staticmethod
 			def _getBaseURL():
 				return "https://official.example"

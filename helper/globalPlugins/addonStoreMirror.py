@@ -86,6 +86,8 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 		self._searchAsYouTypeCheckBox.SetValue(bool(searchAsYouType))
 		if not callable(getattr(wx, "Choice", None)):
 			return
+		add = getattr(settingsSizer, "addItem", settingsSizer.Add)
+		add(wx.StaticText(self, label=_("&Default add-on store:")))
 		self._storePolicyChoice = wx.Choice(
 			self,
 			# Translators: Selects the metadata store used for browsing and future update checks.
@@ -96,12 +98,13 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 		)
 		policy = config.conf["serrebiStore"].get("storePolicy", "mirror")
 		self._storePolicyChoice.SetSelection({"mirror": 0, "official": 1, "custom": 2, "original": 3}.get(policy, 0))
-		self._customStoreURL = wx.TextCtrl(self, value=config.conf["serrebiStore"].get("customStoreURL", ""))
-		add = getattr(settingsSizer, "addItem", settingsSizer.Add)
-		add(wx.StaticText(self, label=_("Default add-on store:")))
 		add(self._storePolicyChoice)
-		add(wx.StaticText(self, label=_("Custom store HTTPS URL:")))
+		add(wx.StaticText(self, label=_("&Custom store HTTPS URL:")))
+		self._customStoreURL = wx.TextCtrl(
+			self, value=config.conf["serrebiStore"].get("customStoreURL", ""),
+		)
 		add(self._customStoreURL)
+		add(wx.StaticText(self, label=_("&Automatic add-on updates:")))
 		self._automaticUpdatesChoice = wx.Choice(
 			self,
 			# Translators: Selects NVDA's native automatic add-on update behavior.
@@ -109,7 +112,6 @@ class SerrebiStoreSettingsPanel(_SettingsPanelBase):
 		)
 		updates = config.conf["addonStore"].get("automaticUpdates", "notify")
 		self._automaticUpdatesChoice.SetSelection({"notify": 0, "update": 1, "disabled": 2}.get(updates, 0))
-		add(wx.StaticText(self, label=_("Automatic add-on updates:")))
 		add(self._automaticUpdatesChoice)
 
 	def onSave(self):
@@ -177,6 +179,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			)
 			return
 		savedURL = config.conf["serrebiStore"]["originalStoreURL"]
+		self._initialCoreURL = currentURL
 		# NVDA persists baseServerURL. On the next startup it may already point at
 		# this mirror, so do not overwrite the remembered official/custom URL with
 		# the mirror itself. Older helper builds could already have done that;
@@ -422,26 +425,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			if manager is None:
 				return
 			self._policyPatchStart = len(self._sourceSupportPatches)
-			router = Router(selectedURL(config.conf["serrebiStore"]))
+			router = Router(
+				selectedURL(config.conf["serrebiStore"]),
+				initialThread=getattr(manager, "_initialiseAvailableAddonsThread", None),
+				initialURL=self._initialCoreURL,
+			)
 			router.install(network, dataManager, store, self._rememberPatch)
 			self._policyRouter = router
 			_activePolicyRouter = router
 			self._registerPolicyProfileSwitch()
-			self._initializePolicyCaches(dataManager, manager, router)
 		except Exception:
 			self._restoreStorePolicy()
 			return
-
-	def _initializePolicyCaches(self, dataManager, manager, router):
-		def initialise():
-			initial = getattr(manager, "_initialiseAvailableAddonsThread", None)
-			if initial is not None and initial is not threading.current_thread():
-				initial.join()
-			if dataManager.addonDataManager is manager and self._policyRouter is router:
-				with router.source(router.defaultURL):
-					manager._latestAddonCache = manager._getCachedAddonData(manager._cacheLatestFile)
-					manager._compatibleAddonCache = manager._getCachedAddonData(manager._cacheCompatibleFile)
-		threading.Thread(target=initialise, name="initialiseStorePolicy", daemon=True).start()
 
 	def _registerPolicyProfileSwitch(self):
 		callback = getattr(config, "post_configProfileSwitch", None)
@@ -449,8 +444,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			callback.register(self._onPolicyProfileSwitch)
 			self._policyProfileSwitchRegistered = True
 
-	def _onPolicyProfileSwitch(self):
+	def _onPolicyProfileSwitch(self, **kwargs):
 		try:
+			import globalVars
+			if globalVars.appArgs.secure:
+				return
 			from globalPlugins._addonStorePolicy import selectedURL
 			url = selectedURL(config.conf["serrebiStore"])
 			config.conf["addonStore"]["baseServerURL"] = url
@@ -467,11 +465,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			except (AttributeError, KeyError):
 				pass
 			self._policyProfileSwitchRegistered = False
-		start = getattr(self, "_policyPatchStart", len(self._sourceSupportPatches))
-		for owner, name, original, replacement in reversed(self._sourceSupportPatches[start:]):
+		router = self._policyRouter
+		if router is not None:
+			router.prepareRestore()
+		for owner, name, original, replacement in reversed(self._sourceSupportPatches[:]):
+			if router is None or replacement not in router.owned:
+				continue
 			if getattr(owner, name, None) is replacement:
 				setattr(owner, name, original)
-		del self._sourceSupportPatches[start:]
+		self._sourceSupportPatches[:] = [
+			patch for patch in self._sourceSupportPatches
+			if router is None or patch[3] not in router.owned
+		]
 		self._policyRouter = None
 		_activePolicyRouter = None
 
@@ -805,8 +810,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				return
 		previousURL = config.conf["addonStore"]["baseServerURL"]
 		config.conf["addonStore"]["baseServerURL"] = url
+		policyRouter = getattr(self, "_policyRouter", None)
 		try:
-			policyRouter = getattr(self, "_policyRouter", None)
 			if policyRouter is None:
 				storeVM = AddonStoreVM()
 			else:
@@ -828,6 +833,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				# one, so only the destroy event is seen on every way out.
 				dialog.Bind(wx.EVT_WINDOW_DESTROY, self._makeCloseRestorer(dialog, restoreURL))
 			dialog.Show()
+			if policyRouter is not None:
+				# The dialog VM has captured its temporary source. Restore the
+				# process default now so other views and update checks stay scoped.
+				config.conf["addonStore"]["baseServerURL"] = policyRouter.defaultURL
 		except Exception:
 			config.conf["addonStore"]["baseServerURL"] = previousURL
 			log.exception("Failed to open the Add-on Store")
@@ -841,7 +850,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		def onDestroy(evt):
 			# Destroy events from child controls reach the dialog too.
 			if evt.GetEventObject() is dialog:
-				config.conf["addonStore"]["baseServerURL"] = restoreURL
+				router = getattr(self, "_policyRouter", None)
+				config.conf["addonStore"]["baseServerURL"] = (
+					router.defaultURL if router is not None else restoreURL
+				)
 				self._refreshStore()
 			evt.Skip()
 
