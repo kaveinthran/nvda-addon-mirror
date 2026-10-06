@@ -181,6 +181,13 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		storeState["shared"] = snapshot
 		persist()
 
+	def saveFromVM(vm):
+		"""Save a user selection without making a Store VM retain its dialog."""
+		dialogRef = getattr(vm, "_serrebiBrowsingDialogRef", None)
+		dialog = dialogRef() if callable(dialogRef) else None
+		if dialog is not None:
+			save(dialog)
+
 	def restorePending(vm):
 		if not active[0] or _isSecure():
 			return
@@ -263,6 +270,7 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 	originalEnabledChange = dialogClass.onEnabledFilterChange
 	originalIncompatibleChange = dialogClass.onIncompatibleFilterChange
 	originalSearchChange = dialogClass.onFilterTextChange
+	originalClose = dialogClass.onClose
 	originalReset = listClass.resetListItems
 	originalSetSelection = listClass.setSelection
 	originalFilter = listClass._getFilteredSortedIds
@@ -275,7 +283,16 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 	originalTerminate = plugin.terminate
 
 	def initDialog(dialog, *args, **kwargs):
-		dialog._serrebiSaveBrowsing = lambda: save(dialog)
+		# These callbacks are owned by the wx dialog.  They must not close over it:
+		# SettingsDialog deliberately keeps destroyed instances observable until all
+		# strong references are gone, and a callback -> dialog cycle prevents the
+		# Store from being opened again.
+		dialogRef = weakref.ref(dialog)
+		def saveReferencedDialog():
+			dialog = dialogRef()
+			if dialog is not None:
+				save(dialog)
+		dialog._serrebiSaveBrowsing = saveReferencedDialog
 		key = config.conf["addonStore"]["baseServerURL"]
 		dialog._serrebiStoreKey = key
 		if _getSetting("rememberTab"):
@@ -286,11 +303,7 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 						kwargs["openToTab"] = tab
 		originalInit(dialog, *args, **kwargs)
 		dialogs.add(dialog)
-		def onDestroy(evt):
-			if evt.GetEventObject() is dialog and active[0]:
-				save(dialog)
-			evt.Skip()
-		dialog.Bind(wx.EVT_WINDOW_DESTROY, onDestroy)
+		dialog._storeVM.listVM._serrebiBrowsingDialogRef = dialogRef
 
 	def tabChange(dialog, evt):
 		if hasattr(dialog, "_serrebiCurrentTab"):
@@ -327,6 +340,12 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 			return result
 		return wrapper
 
+	def saveBeforeClose(dialog, evt):
+		# This is bound by SettingsDialog during construction.  Saving here keeps
+		# the controls valid and also covers a Store closed without a tab change.
+		save(dialog)
+		return originalClose(dialog, evt)
+
 	def searchChange(dialog, evt):
 		before = dialog._storeVM.listVM._filterString
 		result = originalSearchChange(dialog, evt)
@@ -342,9 +361,15 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 			wx.CallAfter(restorePending, vm)
 
 	def setSelection(vm, index):
-		if not getattr(vm, "_serrebiApplyingSelection", False):
+		applying = getattr(vm, "_serrebiApplyingSelection", False)
+		if not applying:
 			vm._serrebiPendingSelection = None
-		return originalSetSelection(vm, index)
+		result = originalSetSelection(vm, index)
+		# User selection is otherwise only captured when another filter or tab is
+		# changed.  Record it immediately, while ignoring native list refreshes.
+		if not applying:
+			saveFromVM(vm)
+		return result
 
 	def refreshSelection(control):
 		vm = control._addonsListVM
@@ -527,7 +552,8 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		if originalRefreshSelection is not None:
 			plugin._rememberPatch(controlClass, "_refreshSelection", refreshSelection)
 		for owner, name, replacement in (
-			(dialogClass, "__init__", initDialog), (dialogClass, "onListTabPageChange", tabChange),
+			(dialogClass, "__init__", initDialog), (dialogClass, "onClose", saveBeforeClose),
+			(dialogClass, "onListTabPageChange", tabChange),
 			(dialogClass, "_createFilterControls", createControls),
 			(dialogClass, "onColumnFilterChange", saveAfter(originalColumnChange)),
 			(dialogClass, "onChannelFilterChange", saveAfter(originalChannelChange)),

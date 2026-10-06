@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import types
 import unittest
+import weakref
 from unittest import mock
 
 
@@ -133,6 +134,9 @@ class BrowsingTests(unittest.TestCase):
 
         class Dialog:
             def __init__(self, *args, **kwargs):
+                pass
+
+            def onClose(self, evt):
                 pass
 
             def onListTabPageChange(self, evt):
@@ -276,6 +280,61 @@ class BrowsingTests(unittest.TestCase):
             panel._columnNames = ["displayName", "status"]
             panel._columnsList = types.SimpleNamespace(IsChecked=lambda index: True)
             panel.onSave()
+            state = json.loads(self.config.conf["serrebiStore"]["browseState"])
+            self.assertEqual("saved", state["stores"]["mirror"]["tabs"]["AVAILABLE"]["selected"])
+
+    def test_dialog_callbacks_do_not_keep_destroyed_store_alive(self):
+        modules, plugin, Dialog, ListVM, Settings, Field, Channel, Enabled, Action = self._makeAdapter()
+        with mock.patch.dict(sys.modules, modules):
+            self.module.enable(plugin, Settings)
+            vm = ListVM()
+            vm._addonsFilteredOrdered = []
+            vm._addons = {}
+            vm.updated = Action()
+            vm._sortByModelField = Field.displayName
+            vm._reverseSort = False
+            vm._filterString = None
+            vm._serrebiSources = None
+            vm.selectedAddonId = None
+            store = types.SimpleNamespace(
+                listVM=vm, _filteredStatusKey=types.SimpleNamespace(name="AVAILABLE"),
+                _filterChannelKey=Channel.STABLE, _filterEnabledDisabled=Enabled.ALL,
+                _filterIncludeIncompatible=False,
+            )
+            dialog = object.__new__(Dialog)
+            dialog._storeVM = store
+            Dialog.__init__(dialog)
+            callback = dialog._serrebiSaveBrowsing
+            dialogRef = weakref.ref(dialog)
+            del dialog
+            self.assertIsNone(dialogRef())
+            # A feature layered outside browsing may retain this callback.
+            # It still cannot retain the destroyed dialog.
+            callback()
+
+    def test_user_selection_is_saved_without_waiting_for_a_tab_change(self):
+        modules, plugin, Dialog, ListVM, Settings, Field, Channel, Enabled, Action = self._makeAdapter()
+        self.config.conf["serrebiStore"]["browseAcrossRestarts"] = True
+        with mock.patch.dict(sys.modules, modules):
+            self.module.enable(plugin, Settings)
+            vm = ListVM()
+            vm._addonsFilteredOrdered = ["first", "saved"]
+            vm._addons = {}
+            vm.updated = Action()
+            vm._sortByModelField = Field.displayName
+            vm._reverseSort = False
+            vm._filterString = None
+            vm._serrebiSources = None
+            vm.selectedAddonId = None
+            store = types.SimpleNamespace(
+                listVM=vm, _filteredStatusKey=types.SimpleNamespace(name="AVAILABLE"),
+                _filterChannelKey=Channel.STABLE, _filterEnabledDisabled=Enabled.ALL,
+                _filterIncludeIncompatible=False,
+            )
+            dialog = object.__new__(Dialog)
+            dialog._storeVM = store
+            Dialog.__init__(dialog)
+            vm.setSelection(1)
             state = json.loads(self.config.conf["serrebiStore"]["browseState"])
             self.assertEqual("saved", state["stores"]["mirror"]["tabs"]["AVAILABLE"]["selected"])
 
