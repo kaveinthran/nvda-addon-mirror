@@ -275,6 +275,7 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 	originalTerminate = plugin.terminate
 
 	def initDialog(dialog, *args, **kwargs):
+		dialog._serrebiSaveBrowsing = lambda: save(dialog)
 		key = config.conf["addonStore"]["baseServerURL"]
 		dialog._serrebiStoreKey = key
 		if _getSetting("rememberTab"):
