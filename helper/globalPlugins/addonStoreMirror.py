@@ -514,7 +514,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		# Translators: Tools submenu containing the mirror and official stores.
 		self._toolsMenuItems = [toolsMenu.AppendSubMenu(storeMenu, _("&Add-on Store"))]
 		self._addBundleMenuItems(toolsMenu, sysTrayIcon)
+		# Translators: Opens a local checklist of installed add-on state and evidence.
+		diagnosticsItem = toolsMenu.Append(wx.ID_ANY, _("Installed add-on &diagnostics..."))
+		sysTrayIcon.Bind(wx.EVT_MENU, self._onInstalledDiagnostics, diagnosticsItem)
+		self._toolsMenuItems.append(diagnosticsItem)
 		log.info("Grouped Add-on Store items in the Tools menu")
+
+	def _onInstalledDiagnostics(self, evt):
+		try:
+			from . import _addonStoreDiagnostics as diagnostics
+			import gui
+			if not diagnostics.showDiagnostics(gui.mainFrame, addonHandler, "addonStoreMirror"):
+				log.warning("Installed add-on diagnostics is unavailable on the secure desktop")
+		except Exception:
+			log.exception("Failed to open installed add-on diagnostics")
 
 	def _addBundleMenuItems(self, toolsMenu, sysTrayIcon):
 		"""Add the Add-on bundles submenu (export/import) to the Tools menu."""

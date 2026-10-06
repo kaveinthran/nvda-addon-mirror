@@ -633,13 +633,13 @@ class HelperToolsMenuTests(unittest.TestCase):
     def test_official_store_item_added(self):
         _helper, _plugin, gui, _modules = self._makeMenuPlugin()
         menu = gui.mainFrame.sysTrayIcon.toolsMenu
-        self.assertEqual(3, len(menu.items))
+        self.assertEqual(4, len(menu.items))
         _item, label, submenu = menu.items[1]
         self.assertEqual("&Add-on Store", label)
         self.assertEqual(("item", "&Add-on store..."), submenu.items[0])
         self.assertIn("official", submenu.items[1][1].lower())
         binds = gui.mainFrame.sysTrayIcon.binds
-        self.assertEqual(3, len(binds))
+        self.assertEqual(4, len(binds))
         event, _handler, _source = binds[0]
         self.assertIs(self.wx.EVT_MENU, event)
 
@@ -672,7 +672,7 @@ class HelperToolsMenuTests(unittest.TestCase):
         originalItem = storeMenu.items[0]
         with mock.patch.dict(sys.modules, modules):
             plugin._removeToolsMenuItems()
-        self.assertEqual(2, len(menu.destroyed))
+        self.assertEqual(3, len(menu.destroyed))
         self.assertEqual([originalItem, ("item", "Other tool")], menu.items)
         self.assertIs(originalItem, menu.items[0])
         self.assertNotIn(originalItem, storeMenu.items)
@@ -1120,7 +1120,7 @@ class HelperInitTerminateTests(unittest.TestCase):
             "", self.config.conf["serrebiStore"]["originalStoreURL"],
         )
         menu = fakes["gui"].mainFrame.sysTrayIcon.toolsMenu
-        self.assertEqual(2, len(menu.items))
+        self.assertEqual(3, len(menu.items))
         self.assertIn(
             helper.SerrebiStoreSettingsPanel,
             fakes["gui.settingsDialogs"].NVDASettingsDialog.categoryClasses,
@@ -1134,7 +1134,7 @@ class HelperInitTerminateTests(unittest.TestCase):
             plugin.terminate()
 
         self.assertEqual("", self.config.conf["addonStore"]["baseServerURL"])
-        self.assertEqual(2, len(menu.destroyed))
+        self.assertEqual(3, len(menu.destroyed))
         self.assertEqual([], plugin._toolsMenuItems)
         self.assertIsNone(plugin._bundleMenu)
         self.assertEqual(
