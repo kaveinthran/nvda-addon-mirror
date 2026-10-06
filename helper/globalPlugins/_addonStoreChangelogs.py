@@ -269,6 +269,9 @@ class ChangelogFeature:
 			oldOrder = vm._addonsFilteredOrdered
 			vm._serrebiDateSort = bool(selection % 2)
 			vm._updateAddonListing()
+			saveBrowsing = getattr(dialog, "_serrebiSaveBrowsing", None)
+			if saveBrowsing is not None:
+				saveBrowsing()
 			if oldOrder != vm._addonsFilteredOrdered:
 				try:
 					import core
