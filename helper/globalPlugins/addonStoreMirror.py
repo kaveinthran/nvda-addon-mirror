@@ -444,6 +444,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			filterCtrl = getattr(dialog, "searchFilterCtrl", None)
 			if filterCtrl is not None:
 				filterCtrl.ChangeValue("")
+		# Browsing preferences can apply a source filter after the Store's own
+		# search. A result must not disappear merely because it came from another
+		# source, so clear that explicit filter and tell the user why.
+		if item.Id not in getattr(listVM, "_addonsFilteredOrdered", ()) \
+				and getattr(listVM, "_serrebiSources", None) is not None:
+			listVM._serrebiSources = None
+			listVM.applyFilter("")
+			wasHidden = True
+			self._showDiscoveryNotice(_("The source filter was cleared to show the selected add-on."))
 		try:
 			index = listVM._addonsFilteredOrdered.index(item.Id)
 		except (AttributeError, ValueError):
@@ -459,9 +468,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			refresh = getattr(listControl, "_doRefresh", None)
 			if callable(refresh):
 				refresh()
+		# AddonVirtualList permits multiple selections. Clear its prior rows
+		# first; otherwise Enter opens the Store's batch action menu instead of
+		# the selected add-on's normal single-item actions.
+		getFirstSelected = getattr(listControl, "GetFirstSelected", None)
+		while callable(getFirstSelected):
+			selectedIndex = getFirstSelected()
+			if selectedIndex < 0:
+				break
+			listControl.Select(selectedIndex, on=False)
+		# Set the view-model selection explicitly as well as the native control.
+		# This immediately updates Store details/actions even if wx coalesces a
+		# selection event during the preceding deselection.
+		listVM.setSelection(index)
 		listControl.SetFocus()
 		listControl.Select(index)
 		listControl.Focus(index)
+		ensureVisible = getattr(listControl, "EnsureVisible", None)
+		if callable(ensureVisible):
+			ensureVisible(index)
 		return True
 
 	def _showDiscoveryNotice(self, message):
@@ -483,6 +508,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			evidence=evidence,
 		) for model, evidence in available]
 		picker = wx.SingleChoiceDialog(self._storeDialog(storeVM), prompt, title, choices)
+		result = None
 		try:
 			picker.SetSelection(0)
 			if picker.ShowModal() != wx.ID_OK:
@@ -490,10 +516,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			selection = picker.GetSelection()
 			if not 0 <= selection < len(available):
 				return
-			if not self._focusDiscoveryResult(storeVM, available[selection][0]):
-				self._showDiscoveryNotice(_("The selected add-on is no longer available in the Store list."))
+			result = available[selection][0]
 		finally:
 			picker.Destroy()
+		if result is not None and not self._focusDiscoveryResult(storeVM, result):
+			self._showDiscoveryNotice(_("The selected add-on is no longer available in the Store list."))
 
 	def _showAuthorMatches(self, storeVM, item, discovery):
 		if self._isSecureDesktop():

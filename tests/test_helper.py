@@ -999,19 +999,47 @@ class HelperInitTerminateTests(unittest.TestCase):
             _addons = {"selected": selectedItem, "result": resultItem}
             _addonsFilteredOrdered = ["selected"]
 
+            def __init__(self):
+                self.selectedIndexes = []
+
             def applyFilter(self, value):
                 applied.append(value)
                 self._addonsFilteredOrdered = ["selected", "result"]
 
+            def setSelection(self, index):
+                self.selectedIndexes.append(index)
+
         listVM = ListVM()
         storeVM = types.SimpleNamespace(listVM=listVM)
         calls = []
-        listControl = types.SimpleNamespace(
-            SetFocus=lambda: calls.append("set focus"),
-            Select=lambda index: calls.append(("select", index)),
-            Focus=lambda index: calls.append(("focus", index)),
-            _doRefresh=lambda: calls.append("refresh"),
-        )
+        class ListControl:
+            def __init__(self):
+                # AddonVirtualList permits more than one selected row.
+                self.selected = {0}
+
+            def GetFirstSelected(self):
+                return min(self.selected) if self.selected else -1
+
+            def Select(self, index, on=True):
+                if on:
+                    self.selected.add(index)
+                else:
+                    self.selected.discard(index)
+                calls.append(("select", index, on))
+
+            def SetFocus(self):
+                calls.append("set focus")
+
+            def Focus(self, index):
+                calls.append(("focus", index))
+
+            def EnsureVisible(self, index):
+                calls.append(("visible", index))
+
+            def _doRefresh(self):
+                calls.append("refresh")
+
+        listControl = ListControl()
         filterControl = types.SimpleNamespace(ChangeValue=lambda value: calls.append(("filter", value)))
         dialog = types.SimpleNamespace(
             _storeVM=storeVM,
@@ -1038,6 +1066,7 @@ class HelperInitTerminateTests(unittest.TestCase):
 
             def Destroy(self):
                 self.destroyed = True
+                calls.append("destroy picker")
 
         picker = []
         helper.wx.GetTopLevelWindows = lambda: [dialog]
@@ -1054,10 +1083,69 @@ class HelperInitTerminateTests(unittest.TestCase):
         self.assertEqual(["Selected — first", "Result — second"], picker[0].choices)
         self.assertTrue(picker[0].destroyed)
         self.assertEqual([""], applied)
+        self.assertEqual([1], listVM.selectedIndexes)
+        self.assertEqual({1}, listControl.selected)
         self.assertEqual(
-            [("filter", ""), "refresh", "set focus", ("select", 1), ("focus", 1)],
+            [
+                "destroy picker", ("filter", ""), "refresh", ("select", 0, False), "set focus",
+                ("select", 1, True), ("focus", 1), ("visible", 1),
+            ],
             calls,
         )
+
+    def test_discovery_result_clears_cross_family_source_filter(self):
+        helper = self._loadHelper({})
+        selectedModel = types.SimpleNamespace(addonId="selected")
+        resultModel = types.SimpleNamespace(addonId="result")
+        selectedItem = types.SimpleNamespace(Id="selected", model=selectedModel)
+        resultItem = types.SimpleNamespace(Id="result", model=resultModel)
+
+        class ListVM:
+            _addons = {"selected": selectedItem, "result": resultItem}
+            _addonsFilteredOrdered = ["selected"]
+            _serrebiSources = {"official"}
+
+            def __init__(self):
+                self.filters = []
+                self.selection = None
+
+            def applyFilter(self, value):
+                self.filters.append(value)
+                self._addonsFilteredOrdered = (
+                    ["selected", "result"] if self._serrebiSources is None else ["selected"]
+                )
+
+            def setSelection(self, index):
+                self.selection = index
+
+        listVM = ListVM()
+        storeVM = types.SimpleNamespace(listVM=listVM)
+        calls = []
+        listControl = types.SimpleNamespace(
+            GetFirstSelected=lambda: -1,
+            Select=lambda index, on=True: calls.append(("select", index, on)),
+            SetFocus=lambda: calls.append("focus"),
+            Focus=lambda index: calls.append(("row", index)),
+            EnsureVisible=lambda index: calls.append(("visible", index)),
+            _doRefresh=lambda: calls.append("refresh"),
+        )
+        dialog = types.SimpleNamespace(
+            _storeVM=storeVM,
+            addonListView=listControl,
+            searchFilterCtrl=types.SimpleNamespace(ChangeValue=lambda value: calls.append(("filter", value))),
+        )
+        helper.wx.GetTopLevelWindows = lambda: [dialog]
+        notices = []
+        plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+        with mock.patch.dict(sys.modules, {"ui": types.SimpleNamespace(message=notices.append)}), mock.patch.object(
+            builtins, "_", lambda text: text, create=True,
+        ):
+            self.assertTrue(plugin._focusDiscoveryResult(storeVM, resultModel))
+
+        self.assertEqual(None, listVM._serrebiSources)
+        self.assertEqual(["", ""], listVM.filters)
+        self.assertEqual(1, listVM.selection)
+        self.assertEqual(["The source filter was cleared to show the selected add-on."], notices)
 
     def _fullFakes(self):
         modelModule = types.ModuleType("addonStore.models.addon")
