@@ -53,8 +53,11 @@ def loadedModuleEvidence(addon):
 	for name, module in tuple(sys.modules.items()):
 		if not _underPath(getattr(module, "__file__", None), getattr(addon, "path", None)):
 			continue
-		root = name.split(".", 1)[0]
-		kind = _MODULE_KINDS.get(root, "add-on module")
+		# NVDA loads add-on modules under ``addons.<path suffix>.<kind>``.
+		# Looking only at the first component would therefore call every real
+		# global plugin and driver a generic "add-on module".
+		kindName = next((part for part in name.split(".") if part in _MODULE_KINDS), None)
+		kind = _MODULE_KINDS.get(kindName, "add-on module")
 		labels.append("%s: %s" % (kind, name))
 	return sorted(set(labels), key=str.casefold)
 
@@ -121,6 +124,7 @@ class DiagnosticsDialog(wx.Dialog):
 	def __init__(self, parent, addonHandler, helperAddonId):
 		super().__init__(parent, title=_("Installed add-on diagnostics"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
 		self._helperAddonId = helperAddonId
+		self._generation = 0
 		self._items = installedInventory(addonHandler)
 		sizer = wx.BoxSizer(wx.VERTICAL)
 		sizer.Add(wx.StaticText(self, label=_("Configured state and loaded-code evidence. Loaded code is not a claim that an add-on is currently active.")), 0, wx.ALL | wx.EXPAND, 10)
@@ -128,6 +132,7 @@ class DiagnosticsDialog(wx.Dialog):
 		for index, item in enumerate(self._items):
 			self._list.Check(index, item["addonId"] != helperAddonId and item["configured"] == "configured enabled")
 		self._list.Bind(wx.EVT_LISTBOX, self._showEvidence)
+		self.Bind(wx.EVT_WINDOW_DESTROY, self._onDestroy)
 		sizer.Add(self._list, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, 10)
 		sizer.Add(wx.StaticText(self, label=_("Evidence for selected add-on:")), 0, wx.ALL, 10)
 		self._evidence = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
@@ -146,6 +151,11 @@ class DiagnosticsDialog(wx.Dialog):
 			self._showEvidence(None)
 		self._list.SetFocus()
 
+	def _onDestroy(self, event):
+		if event.GetEventObject() is self:
+			self._generation += 1
+		event.Skip()
+
 	def _label(self, item):
 		return "%s (%s): %s" % (item["name"], item["addonId"], item["configured"])
 
@@ -154,6 +164,7 @@ class DiagnosticsDialog(wx.Dialog):
 		if index == wx.NOT_FOUND:
 			return
 		item = self._items[index]
+		generation = self._generation
 		loaded = "\n".join(item["loaded"]) or _("No loaded-module evidence found. This does not prove the add-on is inactive.")
 		self._evidence.SetValue(_("Configured state: {state}\n\nLoaded-module evidence (loaded code, not activity):\n{loaded}\n\nCurrent-session related log evidence is read only when you choose View related log evidence.").format(state=item["configured"], loaded=loaded))
 
@@ -170,7 +181,7 @@ class DiagnosticsDialog(wx.Dialog):
 		def read():
 			lines, note = relatedLogEvidence(str(logPath) if logPath else None, item["addonId"], getattr(item["addon"], "path", None))
 			def finish():
-				if not self.IsBeingDeleted():
+				if generation == self._generation and not self.IsBeingDeleted():
 					self._evidence.AppendText("\n\n%s\n%s" % (note, "\n".join(lines) or _("No related current-session log references found.")))
 			wx.CallAfter(finish)
 		threading.Thread(target=read, name="addonStoreDiagnosticsLog", daemon=True).start()

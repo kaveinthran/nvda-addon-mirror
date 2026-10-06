@@ -29,8 +29,15 @@ class DiagnosticsEvidenceTests(unittest.TestCase):
 		addon = types.SimpleNamespace(path="G:/addons/example")
 		module = types.SimpleNamespace(__file__="G:/addons/example/globalPlugins/example.py")
 		outside = types.SimpleNamespace(__file__="G:/addons/exampleElse/appModules/no.py")
-		with mock.patch.object(diagnostics.sys, "modules", {"globalPlugins.example": module, "appModules.no": outside}):
-			self.assertEqual(["global plugin: globalPlugins.example"], diagnostics.loadedModuleEvidence(addon))
+		with mock.patch.object(
+			diagnostics.sys,
+			"modules",
+			{"addons.example.globalPlugins.example": module, "addons.example.appModules.no": outside},
+		):
+			self.assertEqual(
+				["global plugin: addons.example.globalPlugins.example"],
+				diagnostics.loadedModuleEvidence(addon),
+			)
 
 	def test_log_requires_a_current_session_boundary_and_is_bounded(self):
 		diagnostics = loadDiagnostics()
