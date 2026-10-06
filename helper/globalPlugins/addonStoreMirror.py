@@ -11,6 +11,7 @@
 # so no add-on can redirect their Add-on Store anywhere.
 
 import builtins
+import html
 import importlib
 import os
 import threading
@@ -91,6 +92,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self):
 		super().__init__()
 		self._sourceSupportPatches = []
+		self._discoveryPatches = []
+		self._discoveryGeneration = 0
 		self._toolsMenuItems = []
 		self._movedStoreItem = None
 		self._bundleMenu = None
@@ -309,8 +312,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			log.exception("Failed to refresh the add-on store data manager")
 
 	def terminate(self):
+		self._discoveryGeneration += 1
 		self._removeToolsMenuItems()
 		self._unregisterSettingsPanel()
+		self._restoreDiscovery()
 		self._restoreSourceSupport()
 		if not self._urlApplied:
 			return
@@ -325,10 +330,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return True
 
 	def _enableStoreEnhancements(self):
-		"""Backported store UX fixes: deferred search and duplicate warnings."""
+		"""Backported store UX fixes and optional discovery actions."""
 		for enable in (
 			self._enableDeferredSearch,
 			self._enableDuplicateInstallWarning,
+			self._enableDiscovery,
 		):
 			try:
 				enable()
@@ -336,6 +342,169 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				log.exception(
 					f"SerrebiRadio store mirror could not enable {enable.__name__}",
 				)
+
+	def _restoreDiscovery(self):
+		for owner, name, original, replacement in reversed(self._discoveryPatches):
+			try:
+				current = owner.__dict__.get(name, None)
+			except AttributeError:
+				current = getattr(owner, name, None)
+			if current is replacement:
+				setattr(owner, name, original)
+		self._discoveryPatches.clear()
+
+	def _isSecureDesktop(self):
+		try:
+			import globalVars
+			return bool(globalVars.appArgs.secure)
+		except (AttributeError, ImportError):
+			return True
+
+	def _enableDiscovery(self):
+		"""Add single-item discovery actions using NVDA's native action VMs."""
+		try:
+			storeModule = importlib.import_module("gui.addonStoreGui.viewModels.store")
+			actionModule = importlib.import_module("gui.addonStoreGui.viewModels.action")
+			discovery = importlib.import_module("globalPlugins._addonStoreDiscovery")
+		except ImportError:
+			return
+		vmClass = getattr(storeModule, "AddonStoreVM", None)
+		actionClass = getattr(actionModule, "AddonActionVM", None)
+		original = getattr(vmClass, "_makeActionsList", None) if vmClass else None
+		if original is None or actionClass is None:
+			return
+		plugin = self
+
+		def makeActionsList(storeVM):
+			actions = original(storeVM)
+			selected = storeVM.listVM.getSelection()
+			def valid(aVM):
+				return not plugin._isSecureDesktop() and aVM is not None
+			actions.extend((
+				actionClass(
+					# Translators: Opens a readable list of loaded add-ons by the selected author.
+					displayName=_("More by &author"),
+					actionHandler=lambda aVM: plugin._showAuthorMatches(storeVM, aVM, discovery),
+					validCheck=valid,
+					actionTarget=selected,
+				),
+				actionClass(
+					# Translators: Opens a readable list of loaded add-ons similar to the selection.
+					displayName=_("More &like this"),
+					actionHandler=lambda aVM: plugin._showSimilarMatches(storeVM, aVM, discovery),
+					validCheck=valid,
+					actionTarget=selected,
+				),
+				actionClass(
+					# Translators: Opens the installed add-on's folder in File Explorer.
+					displayName=_("Open installed &folder"),
+					actionHandler=plugin._openInstalledFolder,
+					validCheck=lambda aVM: valid(aVM) and plugin._installedPath(aVM) is not None,
+					actionTarget=selected,
+				),
+				actionClass(
+					# Translators: Opens the selected add-on's verified GitHub repository page.
+					displayName=_("Open &repository page"),
+					actionHandler=lambda aVM: os.startfile(discovery.repositoryURL(aVM.model)),
+					validCheck=lambda aVM: valid(aVM) and discovery.repositoryURL(aVM.model) is not None,
+					actionTarget=selected,
+				),
+				actionClass(
+					# Translators: Clones the selected add-on's verified GitHub repository to a chosen folder.
+					displayName=_("Clone &repository..."),
+					actionHandler=lambda aVM: plugin._cloneRepository(aVM, discovery),
+					validCheck=lambda aVM: valid(aVM) and discovery.repositoryURL(aVM.model) is not None,
+					actionTarget=selected,
+				),
+			))
+			return actions
+
+		self._rememberDiscoveryPatch(vmClass, "_makeActionsList", original, makeActionsList)
+
+	def _rememberDiscoveryPatch(self, owner, name, original, replacement):
+		setattr(owner, name, replacement)
+		self._discoveryPatches.append((owner, name, original, replacement))
+
+	def _loadedModels(self, storeVM):
+		addons = getattr(getattr(storeVM, "listVM", None), "_addons", {})
+		return [item.model for item in addons.values() if getattr(item, "model", None) is not None]
+
+	def _showResults(self, title, lines):
+		try:
+			import ui
+			ui.browseableMessage("<br>".join(html.escape(line) for line in lines), title=title, isHtml=True)
+		except Exception:
+			log.exception("Could not show Add-on Store discovery results")
+
+	def _showAuthorMatches(self, storeVM, item, discovery):
+		matches = discovery.authorMatches(item.model, self._loadedModels(storeVM))
+		name = discovery.displayName(item.model)
+		if len(matches) <= 1:
+			self._showResults(_("More by author"), [
+				_("Only one add-on by this author in the loaded catalog: {name}.").format(name=name),
+			])
+			return
+		lines = [_("Add-ons by the selected author in the loaded catalog:")]
+		for model, evidence in matches:
+			lines.append("{name} ({evidence})".format(
+				name=discovery.displayName(model), evidence=", ".join(evidence),
+			))
+		self._showResults(_("More by author"), lines)
+
+	def _showSimilarMatches(self, storeVM, item, discovery):
+		matches = discovery.similarMatches(item.model, self._loadedModels(storeVM))
+		if not matches:
+			self._showResults(_("More like this"), [_("No similar add-ons in the loaded catalog.")])
+			return
+		lines = [_("Similar add-ons in the loaded catalog:")]
+		for model, reasons, score in matches:
+			lines.append("{name} — {reasons} (score {score})".format(
+				name=discovery.displayName(model), reasons="; ".join(reasons), score=score,
+			))
+		self._showResults(_("More like this"), lines)
+
+	def _installedPath(self, item):
+		path = getattr(getattr(item.model, "_addonHandlerModel", None), "path", None)
+		return path if isinstance(path, str) and os.path.isdir(path) else None
+
+	def _openInstalledFolder(self, item):
+		path = self._installedPath(item)
+		if path:
+			os.startfile(path)
+
+	def _cloneRepository(self, item, discovery):
+		if self._isSecureDesktop():
+			return
+		try:
+			import gui
+			import ui
+			parentDialog = gui.mainFrame
+			picker = wx.DirDialog(parentDialog, message=_("Choose a folder for the repository clone"))
+			if picker.ShowModal() != wx.ID_OK:
+				return
+			parent = picker.GetPath()
+			picker.Destroy()
+			repository = discovery.githubRepository(discovery.repositoryURL(item.model))[1]
+			destination = os.path.join(parent, repository)
+			if os.path.exists(destination):
+				ui.message(_("The selected repository folder already exists."))
+				return
+		except Exception:
+			log.exception("Could not choose a repository clone destination")
+			return
+		generation = self._discoveryGeneration
+		def work():
+			try:
+				discovery.cloneRepository(discovery.repositoryURL(item.model), destination)
+				message = _("Repository cloned to {path}.").format(path=destination)
+			except (RuntimeError, ValueError) as error:
+				message = str(error)
+			def complete():
+				if generation == self._discoveryGeneration and not self._isSecureDesktop():
+					import ui
+					ui.message(message)
+			wx.CallAfter(complete)
+		threading.Thread(target=work, name="cloneAddonRepository", daemon=True).start()
 
 	def _enableDeferredSearch(self):
 		"""Let the store list filter on demand instead of on every keystroke.
