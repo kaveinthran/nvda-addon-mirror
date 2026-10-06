@@ -53,6 +53,7 @@ class DiscoveryTests(unittest.TestCase):
 			self.assertIsNone(discovery.githubRepository("https://github.com/owner/repo" + suffix))
 		self.assertIsNone(discovery.githubRepository("https://github.com:444/owner/repo"))
 		self.assertIsNone(discovery.githubRepository("https://github.com:invalid/owner/repo"))
+		self.assertIsNone(discovery.githubRepository("https://[broken"))
 
 	def test_cross_field_similarity_has_an_explanation(self):
 		matches = discovery.similarMatches(model("one", "Network"), [model("two", "Tools", "Network")])

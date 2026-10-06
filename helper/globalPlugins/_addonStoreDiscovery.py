@@ -24,7 +24,10 @@ def safeHttpsURL(value):
 	"""Return an HTTPS URL suitable for opening or cloning, otherwise None."""
 	if not isinstance(value, str) or any(ord(char) < 32 for char in value):
 		return None
-	parsed = urlparse(value.strip())
+	try:
+		parsed = urlparse(value.strip())
+	except ValueError:
+		return None
 	if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
 		return None
 	return value.strip()
