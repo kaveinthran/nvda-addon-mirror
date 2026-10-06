@@ -47,8 +47,13 @@ class ChangelogTests(unittest.TestCase):
 		knownOld = Model(submissionTime=10)
 		knownNew = Model(submissionTime=20)
 		unknown = Model(submissionTime=None)
-		self.assertEqual([knownOld, knownNew, unknown], sorted([unknown, knownNew, knownOld], key=changelogs.sortKey))
-		self.assertEqual([knownNew, knownOld, unknown], sorted([unknown, knownOld, knownNew], key=lambda m: changelogs.sortKey(m, True)))
+		self.assertEqual(
+			[knownOld, knownNew, unknown], sorted([unknown, knownNew, knownOld], key=changelogs.sortKey),
+		)
+		self.assertEqual(
+			[knownNew, knownOld, unknown],
+			sorted([unknown, knownOld, knownNew], key=lambda m: changelogs.sortKey(m, True)),
+		)
 
 	def test_catalog_notes_precede_github_history_and_fallback_is_explicit(self):
 		model = Model(sourceURL="https://github.com/owner/project", addonVersionName="2.0", homepage=None)
@@ -58,8 +63,17 @@ class ChangelogTests(unittest.TestCase):
 			[("2.0", "Latest correction.", "catalog"), ("1.0", "Older note.", "GitHub release")],
 			changelogs.historyForModel(model, history),
 		)
-		failed = changelogs.ReleaseHistory(fetch=lambda _repo: (_ for _ in ()).throw(HTTPError("x", 429, "", {}, None)))
+		failed = changelogs.ReleaseHistory(
+			fetch=lambda _repo: (_ for _ in ()).throw(HTTPError("x", 429, "", {}, None)),
+		)
 		self.assertEqual("catalog; rateLimit", changelogs.historyForModel(model, failed)[0][2])
+
+	def test_native_manifest_changelog_is_used_without_store_factory_metadata(self):
+		model = Model(sourceURL=None, addonVersionName="1.0", homepage=None, changelog="Manifest notes.")
+		self.assertEqual(
+			[("1.0", "Manifest notes.", "catalog; notGitHub")],
+			changelogs.historyForModel(model, changelogs.ReleaseHistory(fetch=lambda _repo: [])),
+		)
 
 	def test_cache_prevents_repeat_fetch_inside_ttl(self):
 		calls = []
@@ -84,13 +98,18 @@ class ChangelogTests(unittest.TestCase):
 			def setSortField(self, *_args, **_kwargs): self.nativeCalled = True
 		listModule = types.ModuleType("gui.addonStoreGui.viewModels.addonList")
 		listModule.AddonListVM = List
+		class StoreContext:
+			def __init__(self, vm): self.listVM = vm
 		class Dialog:
-			def __init__(self, vm): self._storeVM = types.SimpleNamespace(listVM=vm)
+			def __init__(self, vm): self._storeVM = StoreContext(vm)
+			def Bind(self, _event, handler): self.destroyHandler = handler
 			def onColumnFilterChange(self, _event):
 				self.nativeCalled = True
 				self._storeVM.listVM.setSortField("native")
 		dialogModule = types.ModuleType("gui.addonStoreGui.controls.storeDialog")
 		dialogModule.AddonStoreDialog = Dialog
+		wx = types.ModuleType("wx")
+		wx.EVT_WINDOW_DESTROY = object()
 		modelModule = types.ModuleType("addonStore.models.addon")
 		modelModule._AddonGUIModel = type("Base", (), {"asdict": lambda self: {}})
 		modelModule._createStoreModelFromData = lambda _data: Model()
@@ -100,14 +119,18 @@ class ChangelogTests(unittest.TestCase):
 		modules = {
 			"addonStore.models.addon": modelModule, "gui.addonStoreGui.viewModels.addonList": listModule,
 			"gui.addonStoreGui.controls.storeDialog": dialogModule, "gui.addonStoreGui.viewModels.store": storeModule,
+			"wx": wx,
 		}
 		class Plugin:
 			def _rememberPatch(self, owner, name, replacement): setattr(owner, name, replacement)
 		old = {name: sys.modules.get(name) for name in modules}
 		try:
-			sys.modules.update(modules); changelogs.ChangelogFeature(Plugin()).enable()
-			vm, dialog = List(), Dialog(List())
+			sys.modules.update(modules)
+			feature = changelogs.ChangelogFeature(Plugin())
+			feature.enable()
+			vm = List()
 			dialog = Dialog(vm)
+			self.assertIs(feature._dialogs[dialog._storeVM](), dialog)
 			dialog.onColumnFilterChange(types.SimpleNamespace(GetSelection=lambda: 3))
 			self.assertTrue(vm._serrebiDateSort)
 			self.assertEqual(["new", "old", "unknown"], vm._addonsFilteredOrdered)
@@ -118,6 +141,10 @@ class ChangelogTests(unittest.TestCase):
 			dialog.onColumnFilterChange(types.SimpleNamespace(GetSelection=lambda: 0))
 			self.assertIsNone(vm._serrebiDateSort)
 			self.assertTrue(dialog.nativeCalled)
+			event = types.SimpleNamespace(GetEventObject=lambda: dialog, Skip=lambda: None)
+			dialog.destroyHandler(event)
+			self.assertFalse(dialog._serrebiChangelogAlive)
+			self.assertNotIn(dialog._storeVM, feature._dialogs)
 		finally:
 			for name, value in old.items():
 				if value is None: sys.modules.pop(name, None)
@@ -148,15 +175,27 @@ class ChangelogTests(unittest.TestCase):
 		)
 		storeModule = types.ModuleType("gui.addonStoreGui.viewModels.store")
 		storeModule.AddonStoreVM = type("Store", (), {"_makeActionsList": lambda self: []})
+		dialogModule = types.ModuleType("gui.addonStoreGui.controls.storeDialog")
+		dialogModule.AddonStoreDialog = type(
+			"Dialog",
+			(),
+			{"__init__": lambda self, *_args, **_kwargs: None, "onColumnFilterChange": lambda self, evt: None},
+		)
+		wx = types.ModuleType("wx")
+		wx.EVT_WINDOW_DESTROY = object()
 		modules = {
 			"addonStore.models.addon": modelModule, "addonStore.dataManager": dataManager,
 			"gui.addonStoreGui.viewModels.addonList": listModule,
 			"gui.addonStoreGui.viewModels.store": storeModule,
+			"gui.addonStoreGui.controls.storeDialog": dialogModule,
+			"wx": wx,
 		}
 		class Plugin:
 			def __init__(self): self.patches = []
 			def _rememberPatch(self, owner, name, replacement):
-				original = getattr(owner, name); setattr(owner, name, replacement); self.patches.append((owner, name, original, replacement))
+				original = getattr(owner, name)
+				setattr(owner, name, replacement)
+				self.patches.append((owner, name, original, replacement))
 		plugin = Plugin()
 		old = dict((name, sys.modules.get(name)) for name in modules)
 		try:

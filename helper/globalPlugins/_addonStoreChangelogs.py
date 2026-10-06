@@ -10,6 +10,7 @@ import math
 import re
 import threading
 import time
+import weakref
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -108,7 +109,11 @@ class ReleaseHistory:
 
 
 def _catalogNote(model):
-	note = getattr(model, MODEL_CHANGELOG_ATTRIBUTE, "")
+	note = getattr(model, MODEL_CHANGELOG_ATTRIBUTE, None)
+	if not isinstance(note, str):
+		# External/manually installed models do not pass through the store-data
+		# factories, but NVDA exposes their manifest changelog natively.
+		note = getattr(model, "changelog", "")
 	return note.strip() if isinstance(note, str) else ""
 
 
@@ -162,9 +167,12 @@ class ChangelogFeature:
 		self.plugin = plugin
 		self.history = ReleaseHistory()
 		self._generation = 0
+		self._requestGeneration = 0
+		self._dialogs = weakref.WeakKeyDictionary()
 
 	def terminate(self):
 		self._generation += 1
+		self._requestGeneration += 1
 
 	def enable(self):
 		if isSecureDesktop():
@@ -207,11 +215,15 @@ class ChangelogFeature:
 		self.plugin._rememberPatch(base, "asdict", asdict)
 		self._patchSort(importlib)
 		self._patchSortControl(importlib)
+		self._patchDialogLifecycle(importlib)
 		self._patchAction(storeModule)
 
 	def _patchSort(self, importlib):
 		listModule = importlib.import_module("gui.addonStoreGui.viewModels.addonList")
 		cls = listModule.AddonListVM
+		choices = getattr(cls, "_columnSortChoices", None)
+		if not isinstance(choices, property):
+			raise RuntimeError("Add-on Store sort choices are not patchable")
 		original = cls._getFilteredSortedIds
 		def filtered(vm):
 			if not hasattr(vm, "_serrebiDateSort") or vm._serrebiDateSort is None:
@@ -229,26 +241,24 @@ class ChangelogFeature:
 			vm._serrebiDateSort = None
 			return originalSetSort(vm, *args, **kwargs)
 		self.plugin._rememberPatch(cls, "setSortField", setSortField)
-		choices = cls._columnSortChoices
-		if isinstance(choices, property):
-			def getChoices(vm):
-				result = list(choices.__get__(vm, type(vm)))
-				# Translators: An Add-on Store sort option using source release timestamps.
-				result.append(_("Last updated (ascending)"))
-				# Translators: An Add-on Store sort option using source release timestamps.
-				result.append(_("Last updated (descending)"))
-				return result
-			self.plugin._rememberPatch(cls, "_columnSortChoices", property(getChoices))
+		def getChoices(vm):
+			result = list(choices.__get__(vm, type(vm)))
+			# Translators: An Add-on Store sort option using source release timestamps.
+			result.append(_("Last updated (ascending)"))
+			# Translators: An Add-on Store sort option using source release timestamps.
+			result.append(_("Last updated (descending)"))
+			return result
+		self.plugin._rememberPatch(cls, "_columnSortChoices", property(getChoices))
 
 	def _patchSortControl(self, importlib):
 		"""Dispatch the two appended sort choices without adding a fake enum."""
 		try:
 			dialogModule = importlib.import_module("gui.addonStoreGui.controls.storeDialog")
-		except ImportError:
-			return
+		except ImportError as e:
+			raise RuntimeError("Add-on Store sort control is unavailable") from e
 		cls = getattr(dialogModule, "AddonStoreDialog", None)
 		if cls is None or not hasattr(cls, "onColumnFilterChange"):
-			return
+			raise RuntimeError("Add-on Store sort control is not patchable")
 		original = cls.onColumnFilterChange
 		def onColumnFilterChange(dialog, event):
 			vm = dialog._storeVM.listVM
@@ -267,6 +277,32 @@ class ChangelogFeature:
 					vm.updated.notify()
 		self.plugin._rememberPatch(cls, "onColumnFilterChange", onColumnFilterChange)
 
+	def _patchDialogLifecycle(self, importlib):
+		import wx
+		dialogModule = importlib.import_module("gui.addonStoreGui.controls.storeDialog")
+		cls = getattr(dialogModule, "AddonStoreDialog", None)
+		if cls is None or not hasattr(cls, "__init__"):
+			raise RuntimeError("Add-on Store dialog lifecycle is not patchable")
+		original = cls.__init__
+		feature = self
+		def init(dialog, *args, **kwargs):
+			original(dialog, *args, **kwargs)
+			vm = dialog._storeVM
+			dialogRef = weakref.ref(dialog)
+			dialog._serrebiChangelogAlive = True
+			feature._dialogs[vm] = dialogRef
+			def onDestroy(event):
+				currentDialog = dialogRef()
+				if currentDialog is not None and event.GetEventObject() is currentDialog:
+					currentDialog._serrebiChangelogAlive = False
+					feature._requestGeneration += 1
+					current = feature._dialogs.get(vm)
+					if current is not None and current() is currentDialog:
+						del feature._dialogs[vm]
+				event.Skip()
+			dialog.Bind(wx.EVT_WINDOW_DESTROY, onDestroy)
+		feature.plugin._rememberPatch(cls, "__init__", init)
+
 	def _patchAction(self, storeModule):
 		vmClass = storeModule.AddonStoreVM
 		original = vmClass._makeActionsList
@@ -280,38 +316,52 @@ class ChangelogFeature:
 			# Translators: Add-on Store action that opens the selected add-on's release notes.
 			result.append(AddonActionVM(
 				displayName=_("&Changelog"),
-				actionHandler=feature.show,
+				actionHandler=lambda item: feature.show(item, vm),
 				validCheck=lambda item: item is not None and not isSecureDesktop(),
 				actionTarget=vm.listVM.getSelection(),
 			))
 			return result
 		self.plugin._rememberPatch(vmClass, "_makeActionsList", actions)
 
-	def show(self, item):
+	def show(self, item, storeVM):
 		if item is None or isSecureDesktop():
+			return
+		dialogRef = self._dialogs.get(storeVM)
+		if dialogRef is None or dialogRef() is None:
 			return
 		import ui
 		# Translators: Release history is being retrieved in the background.
 		ui.message(_("Loading changelog."))
 		generation = self._generation
+		self._requestGeneration += 1
+		requestGeneration = self._requestGeneration
 		def worker():
 			rows = historyForModel(item.model, self.history)
-			if generation != self._generation:
+			if generation != self._generation or requestGeneration != self._requestGeneration:
 				return
 			try:
 				import wx
-				wx.CallAfter(self._showDialog, item.model.displayName, rows, generation)
+				wx.CallAfter(
+					self._showDialog, item.model.displayName, rows,
+					generation, requestGeneration, dialogRef,
+				)
 			except Exception:
 				return
 		threading.Thread(target=worker, name="addonStoreChangelog", daemon=True).start()
 
-	def _showDialog(self, name, rows, generation):
-		if generation != self._generation or isSecureDesktop():
+	def _showDialog(self, name, rows, generation, requestGeneration, dialogRef):
+		parent = dialogRef()
+		if (
+			generation != self._generation
+			or requestGeneration != self._requestGeneration
+			or parent is None
+			or not getattr(parent, "_serrebiChangelogAlive", False)
+			or isSecureDesktop()
+		):
 			return
 		import wx
-		from gui import mainFrame
 		# Translators: Title of an Add-on Store dialog. {name} is the add-on name.
-		dialog = wx.Dialog(mainFrame, title=_("Changelog: {name}").format(name=name))
+		dialog = wx.Dialog(parent, title=_("Changelog: {name}").format(name=name))
 		sizer = wx.BoxSizer(wx.VERTICAL)
 		# Translators: Label for the release-version choice in the changelog viewer.
 		sizer.Add(wx.StaticText(dialog, label=_("&Version and source:")), 0, wx.ALL, 8)
@@ -333,5 +383,7 @@ class ChangelogFeature:
 		sizer.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
 		dialog.SetSizerAndFit(sizer)
 		dialog.SetSize((650, 450))
-		dialog.ShowModal()
-		dialog.Destroy()
+		try:
+			dialog.ShowModal()
+		finally:
+			dialog.Destroy()
