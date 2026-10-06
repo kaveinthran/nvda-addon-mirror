@@ -986,6 +986,79 @@ class HelperInitTerminateTests(unittest.TestCase):
 
     _loadHelper = HelperSourceSupportTests._loadHelper
 
+    def test_discovery_picker_returns_live_item_to_native_store_actions(self):
+        """Enter in discovery selects the existing Store row, never a copy."""
+        helper = self._loadHelper({})
+        selectedModel = types.SimpleNamespace(addonId="selected", displayName="Selected")
+        resultModel = types.SimpleNamespace(addonId="result", displayName="Result")
+        selectedItem = types.SimpleNamespace(Id="selected", model=selectedModel)
+        resultItem = types.SimpleNamespace(Id="result", model=resultModel)
+        applied = []
+
+        class ListVM:
+            _addons = {"selected": selectedItem, "result": resultItem}
+            _addonsFilteredOrdered = ["selected"]
+
+            def applyFilter(self, value):
+                applied.append(value)
+                self._addonsFilteredOrdered = ["selected", "result"]
+
+        listVM = ListVM()
+        storeVM = types.SimpleNamespace(listVM=listVM)
+        calls = []
+        listControl = types.SimpleNamespace(
+            SetFocus=lambda: calls.append("set focus"),
+            Select=lambda index: calls.append(("select", index)),
+            Focus=lambda index: calls.append(("focus", index)),
+            _doRefresh=lambda: calls.append("refresh"),
+        )
+        filterControl = types.SimpleNamespace(ChangeValue=lambda value: calls.append(("filter", value)))
+        dialog = types.SimpleNamespace(
+            _storeVM=storeVM,
+            addonListView=listControl,
+            searchFilterCtrl=filterControl,
+        )
+
+        class Picker:
+            def __init__(self, parent, prompt, title, choices):
+                self.parent = parent
+                self.prompt = prompt
+                self.title = title
+                self.choices = choices
+                self.destroyed = False
+
+            def SetSelection(self, index):
+                self.defaultSelection = index
+
+            def ShowModal(self):
+                return helper.wx.ID_OK
+
+            def GetSelection(self):
+                return 1
+
+            def Destroy(self):
+                self.destroyed = True
+
+        picker = []
+        helper.wx.GetTopLevelWindows = lambda: [dialog]
+        helper.wx.SingleChoiceDialog = lambda *args: picker.append(Picker(*args)) or picker[-1]
+        plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+
+        plugin._showResults(
+            storeVM,
+            "Similar",
+            "Choose",
+            [(selectedModel, "first"), (resultModel, "second")],
+        )
+
+        self.assertEqual(["Selected — first", "Result — second"], picker[0].choices)
+        self.assertTrue(picker[0].destroyed)
+        self.assertEqual([""], applied)
+        self.assertEqual(
+            [("filter", ""), "refresh", "set focus", ("select", 1), ("focus", 1)],
+            calls,
+        )
+
     def _fullFakes(self):
         modelModule = types.ModuleType("addonStore.models.addon")
 

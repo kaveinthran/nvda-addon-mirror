@@ -11,7 +11,6 @@
 # so no add-on can redirect their Add-on Store anywhere.
 
 import builtins
-import html
 import importlib
 import os
 import threading
@@ -409,51 +408,123 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 		self._rememberPatch(vmClass, "_makeActionsList", makeActionsList)
 
-	def _loadedModels(self, storeVM):
+	def _loadedItems(self, storeVM):
+		"""Return live Store list items rather than copies of their models."""
 		addons = getattr(getattr(storeVM, "listVM", None), "_addons", {})
-		return [item.model for item in addons.values() if getattr(item, "model", None) is not None]
+		return [item for item in addons.values() if getattr(item, "model", None) is not None]
 
-	def _showResults(self, title, lines):
+	def _loadedModels(self, storeVM):
+		return [item.model for item in self._loadedItems(storeVM)]
+
+	def _storeDialog(self, storeVM):
+		"""Find the displayed Store dialog without retaining a destroyed dialog."""
+		try:
+			for window in wx.GetTopLevelWindows():
+				if getattr(window, "_storeVM", None) is storeVM:
+					return window
+		except Exception:
+			log.exception("Could not locate the Add-on Store window")
+		return None
+
+	def _focusDiscoveryResult(self, storeVM, model):
+		"""Select a discovery result in the native Store list and focus it."""
+		listVM = getattr(storeVM, "listVM", None)
+		if listVM is None:
+			return False
+		item = next((candidate for candidate in self._loadedItems(storeVM)
+			if candidate.model is model), None)
+		if item is None:
+			return False
+		# A pending search can hide the chosen result. Clear it so the native
+		# list, details pane and action menu receive its original list item VM.
+		wasHidden = item.Id not in getattr(listVM, "_addonsFilteredOrdered", ())
+		if wasHidden:
+			listVM.applyFilter("")
+			dialog = self._storeDialog(storeVM)
+			filterCtrl = getattr(dialog, "searchFilterCtrl", None)
+			if filterCtrl is not None:
+				filterCtrl.ChangeValue("")
+		try:
+			index = listVM._addonsFilteredOrdered.index(item.Id)
+		except (AttributeError, ValueError):
+			return False
+		dialog = self._storeDialog(storeVM)
+		listControl = getattr(dialog, "addonListView", None)
+		if listControl is None:
+			return False
+		# applyFilter notifies the virtual list on NVDA's next main-loop tick.
+		# Refresh it now before selecting a row that had been hidden, otherwise
+		# wx can reject the new index while its old item count is still visible.
+		if wasHidden:
+			refresh = getattr(listControl, "_doRefresh", None)
+			if callable(refresh):
+				refresh()
+		listControl.SetFocus()
+		listControl.Select(index)
+		listControl.Focus(index)
+		return True
+
+	def _showDiscoveryNotice(self, message):
 		try:
 			import ui
-			ui.browseableMessage("<br>".join(html.escape(line) for line in lines), title=title, isHtml=True)
+			ui.message(message)
 		except Exception:
-			log.exception("Could not show Add-on Store discovery results")
+			log.exception("Could not announce Add-on Store discovery results")
+
+	def _showResults(self, storeVM, title, prompt, results):
+		"""Enter returns the selected result to its normal native Store UI."""
+		available = [(model, evidence) for model, evidence in results
+			if any(item.model is model for item in self._loadedItems(storeVM))]
+		if not available:
+			self._showDiscoveryNotice(_("No matching add-ons are available in the current Store list."))
+			return
+		choices = ["{name} — {evidence}".format(
+			name=getattr(model, "displayName", None) or getattr(model, "addonId", ""),
+			evidence=evidence,
+		) for model, evidence in available]
+		picker = wx.SingleChoiceDialog(self._storeDialog(storeVM), prompt, title, choices)
+		try:
+			picker.SetSelection(0)
+			if picker.ShowModal() != wx.ID_OK:
+				return
+			selection = picker.GetSelection()
+			if not 0 <= selection < len(available):
+				return
+			if not self._focusDiscoveryResult(storeVM, available[selection][0]):
+				self._showDiscoveryNotice(_("The selected add-on is no longer available in the Store list."))
+		finally:
+			picker.Destroy()
 
 	def _showAuthorMatches(self, storeVM, item, discovery):
 		if self._isSecureDesktop():
 			return
 		matches = discovery.authorMatches(item.model, self._loadedModels(storeVM))
-		name = discovery.displayName(item.model)
 		if not matches:
 			# Translators: Catalog metadata cannot identify the selected add-on's author.
-			self._showResults(_("More by author"), [_("Author identity is unavailable in the loaded catalog.")])
+			self._showDiscoveryNotice(_("Author identity is unavailable in the loaded catalog."))
 			return
-		if len(matches) <= 1:
-			self._showResults(_("More by author"), [
-				_("Only one add-on by this author in the loaded catalog: {name}.").format(name=name),
-			])
-			return
-		lines = [_("Add-ons by the selected author in the loaded catalog:")]
-		for model, evidence in matches:
-			lines.append("{name} ({evidence})".format(
-				name=discovery.displayName(model), evidence=", ".join(evidence),
-			))
-		self._showResults(_("More by author"), lines)
+		self._showResults(
+			storeVM,
+			_("More by author"),
+			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
+			[(model, ", ".join(evidence)) for model, evidence in matches],
+		)
 
 	def _showSimilarMatches(self, storeVM, item, discovery):
 		if self._isSecureDesktop():
 			return
 		matches = discovery.similarMatches(item.model, self._loadedModels(storeVM))
 		if not matches:
-			self._showResults(_("More like this"), [_("No similar add-ons in the loaded catalog.")])
+			self._showDiscoveryNotice(_("No similar add-ons in the loaded catalog."))
 			return
-		lines = [_("Similar add-ons in the loaded catalog:")]
-		for model, reasons, score in matches:
-			lines.append("{name} — {reasons} (score {score})".format(
-				name=discovery.displayName(model), reasons="; ".join(reasons), score=score,
-			))
-		self._showResults(_("More like this"), lines)
+		self._showResults(
+			storeVM,
+			_("More like this"),
+			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
+			[(model, "{reasons} (score {score})".format(
+				reasons="; ".join(reasons), score=score,
+			)) for model, reasons, score in matches],
+		)
 
 	def _installedPath(self, item):
 		path = getattr(getattr(item.model, "_addonHandlerModel", None), "path", None)
