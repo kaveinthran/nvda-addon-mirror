@@ -5,16 +5,24 @@ clone repositories containing material you do not trust.
 
 1. Open the mirror Add-on Store and select an add-on with an author or publisher.
    Open its context menu with Applications or Shift+F10. Confirm **More by
-   author** opens a keyboard-readable results window. The selected add-on may
+   author** opens a native selectable results list. The selected add-on may
    be the sole result; in that case confirm it says the result is limited to
    the loaded catalog. Where another channel for the same add-on exists, it
    must not be counted twice. Check that author/publisher and repository-owner
-   matches are named separately.
+   matches are named separately. Arrow to a different result and press Enter.
+   The picker should close and the exact add-on/channel should become the only
+   selected row in the existing Store. Inspect its description and normal
+   actions with Enter or Shift+F10; available Install, Help, Homepage and helper
+   actions must target that add-on. Escape from the picker should preserve the
+   original Store selection. Repeat when a search hides the chosen result.
 2. Select an add-on with meaningful name and description text. Use **More like
    this** and confirm the results omit the selected add-on, give match reasons
    (title or description tokens), and remain in the same order when reopened.
    Try a specialized add-on whose words are not shared and confirm the clear
-   no-results message.
+   no-results message. Press Enter on a result and inspect the same native
+   details/actions. With source filtering available, pick a result hidden by a
+   source subset: the Store should clear that filter, explain why, and select
+   the chosen item. It must not show a batch action menu for two selected rows.
 3. On an installed add-on, check **Open installed folder** opens that add-on's
    resolved folder. It must not appear for a catalog-only or unavailable
    installed path.
