@@ -35,14 +35,17 @@ def isSecureDesktop():
 		from utils.security import isRunningOnSecureDesktop
 		return bool(isRunningOnSecureDesktop())
 	except ImportError:
-		return False
+		return True
 
 
 def _underPath(filename, addonPath):
 	if not isinstance(filename, str) or not isinstance(addonPath, str):
 		return False
 	try:
-		return os.path.commonpath((os.path.realpath(filename), os.path.realpath(addonPath))) == os.path.realpath(addonPath)
+		return (
+			os.path.commonpath((os.path.realpath(filename), os.path.realpath(addonPath)))
+			== os.path.realpath(addonPath)
+		)
 	except (OSError, ValueError):
 		return False
 
@@ -56,7 +59,10 @@ def loadedModuleEvidence(addon):
 		# NVDA loads add-on modules under ``addons.<path suffix>.<kind>``.
 		# Looking only at the first component would therefore call every real
 		# global plugin and driver a generic "add-on module".
-		kindName = next((part for part in name.split(".") if part in _MODULE_KINDS), None)
+		kindName = next(
+			(part for part in name.split(".") if part in _MODULE_KINDS),
+			None,
+		)
 		kind = _MODULE_KINDS.get(kindName, "add-on module")
 		labels.append("%s: %s" % (kind, name))
 	return sorted(set(labels), key=str.casefold)
@@ -71,7 +77,9 @@ def installedInventory(addonHandler):
 			name = manifest.get("summary") or addon.name
 		except Exception:
 			continue
-		disabled = bool(getattr(addon, "isDisabled", False) or getattr(addon, "isBlocked", False))
+		disabled = bool(
+			getattr(addon, "isDisabled", False) or getattr(addon, "isBlocked", False),
+		)
 		items.append({
 			"addon": addon,
 			"addonId": addon.name,
@@ -105,7 +113,11 @@ def relatedLogEvidence(path, addonId, addonPath):
 	if not lines:
 		return [], "The log tail has no identifiable current-session boundary; no log evidence is shown."
 	needles = tuple(value.casefold() for value in (addonId, addonPath) if isinstance(value, str) and value)
-	matches = [line.strip()[:_MAX_LOG_LINE_LENGTH] for line in lines if any(needle in line.casefold() for needle in needles)]
+	matches = [
+		line.strip()[:_MAX_LOG_LINE_LENGTH]
+		for line in lines
+		if any(needle in line.casefold() for needle in needles)
+	]
 	return matches[-_MAX_LOG_LINES:], "Current-session log references only; a reference does not prove activity."
 
 
@@ -122,12 +134,23 @@ def disableSelected(items, helperAddonId):
 class DiagnosticsDialog(wx.Dialog):
 	"""Keyboard-accessible checklist and readonly evidence viewer."""
 	def __init__(self, parent, addonHandler, helperAddonId):
-		super().__init__(parent, title=_("Installed add-on diagnostics"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+		super().__init__(
+			parent,
+			title=_("Installed add-on diagnostics"),
+			style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+		)
 		self._helperAddonId = helperAddonId
 		self._generation = 0
 		self._items = installedInventory(addonHandler)
 		sizer = wx.BoxSizer(wx.VERTICAL)
-		sizer.Add(wx.StaticText(self, label=_("Configured state and loaded-code evidence. Loaded code is not a claim that an add-on is currently active.")), 0, wx.ALL | wx.EXPAND, 10)
+		intro = wx.StaticText(
+			self,
+			label=_(
+				"Configured state and loaded-code evidence. Loaded code is not a claim "
+				"that an add-on is currently active.",
+			),
+		)
+		sizer.Add(intro, 0, wx.ALL | wx.EXPAND, 10)
 		self._list = wx.CheckListBox(self, choices=[self._label(item) for item in self._items])
 		for index, item in enumerate(self._items):
 			self._list.Check(index, item["addonId"] != helperAddonId and item["configured"] == "configured enabled")
@@ -142,7 +165,9 @@ class DiagnosticsDialog(wx.Dialog):
 		sizer.Add(viewLogsButton, 0, wx.ALL, 10)
 		buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
 		self.Bind(wx.EVT_BUTTON, self._disableChecked, id=wx.ID_OK)
-		self.GetAffirmativeButton().SetLabel(_("Disable checked add-ons..."))
+		affirmativeButton = self.FindWindowById(wx.ID_OK)
+		if affirmativeButton is not None:
+			affirmativeButton.SetLabel(_("Disable checked add-ons..."))
 		sizer.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 10)
 		self.SetSizerAndFit(sizer)
 		self.SetMinSize((650, 450))
@@ -164,44 +189,98 @@ class DiagnosticsDialog(wx.Dialog):
 		if index == wx.NOT_FOUND:
 			return
 		item = self._items[index]
-		generation = self._generation
-		loaded = "\n".join(item["loaded"]) or _("No loaded-module evidence found. This does not prove the add-on is inactive.")
-		self._evidence.SetValue(_("Configured state: {state}\n\nLoaded-module evidence (loaded code, not activity):\n{loaded}\n\nCurrent-session related log evidence is read only when you choose View related log evidence.").format(state=item["configured"], loaded=loaded))
+		loaded = "\n".join(item["loaded"]) or _(
+			"No loaded-module evidence found. This does not prove the add-on is inactive.",
+		)
+		self._evidence.SetValue(
+			_(
+				"Configured state: {state}\n\nLoaded-module evidence (loaded code, not activity):\n"
+				"{loaded}\n\nCurrent-session related log evidence is read only when you choose "
+				"View related log evidence.",
+			).format(state=item["configured"], loaded=loaded),
+		)
 
 	def _readRelatedLogs(self, evt):
+		if isSecureDesktop():
+			return
 		index = self._list.GetSelection()
 		if index == wx.NOT_FOUND:
 			return
 		item = self._items[index]
+		generation = self._generation
 		try:
 			import globalVars
 			logPath = getattr(globalVars.appArgs, "logFileName", None)
 		except (ImportError, AttributeError):
 			logPath = None
 		def read():
-			lines, note = relatedLogEvidence(str(logPath) if logPath else None, item["addonId"], getattr(item["addon"], "path", None))
+			lines, note = relatedLogEvidence(
+				str(logPath) if logPath else None,
+				item["addonId"],
+				getattr(item["addon"], "path", None),
+			)
 			def finish():
-				if generation == self._generation and not self.IsBeingDeleted():
-					self._evidence.AppendText("\n\n%s\n%s" % (note, "\n".join(lines) or _("No related current-session log references found.")))
+				if (
+					generation == self._generation
+					and not self.IsBeingDeleted()
+					and not isSecureDesktop()
+				):
+					self._evidence.AppendText(
+						"\n\n%s\n%s" % (
+							note,
+							"\n".join(lines) or _("No related current-session log references found."),
+						),
+					)
 			wx.CallAfter(finish)
 		threading.Thread(target=read, name="addonStoreDiagnosticsLog", daemon=True).start()
 
 	def _disableChecked(self, evt):
+		if isSecureDesktop():
+			return
 		selected = [self._items[i] for i in range(len(self._items)) if self._list.IsChecked(i)]
 		selected = [item for item in selected if item["configured"] == "configured enabled"]
 		if not selected:
-			wx.MessageBox(_("Select one or more configured enabled add-ons."), _("Disable add-ons"), wx.OK | wx.ICON_INFORMATION, self)
+			wx.MessageBox(
+				_("Select one or more configured enabled add-ons."),
+				_("Disable add-ons"),
+				wx.OK | wx.ICON_INFORMATION,
+				self,
+			)
 			return
 		names = "\n".join(item["name"] for item in selected)
-		answer = wx.MessageBox(_("The following add-ons will be disabled after NVDA restarts:\n\n{names}\n\nNo add-on files will be removed, and NVDA will not restart automatically. Continue?").format(names=names), _("Confirm disable add-ons"), wx.YES_NO | wx.ICON_WARNING, self)
+		answer = wx.MessageBox(
+			_(
+				"The following add-ons will be disabled after NVDA restarts:\n\n{names}\n\n"
+				"No add-on files will be removed, and NVDA will not restart automatically. "
+				"Continue?",
+			).format(names=names),
+			_("Confirm disable add-ons"),
+			wx.YES_NO | wx.ICON_WARNING,
+			self,
+		)
 		if answer != wx.YES:
 			return
 		try:
 			disableSelected(selected, self._helperAddonId)
 		except Exception as error:
-			wx.MessageBox(_("NVDA could not schedule the selected add-ons for disable: {error}").format(error=error), _("Disable add-ons"), wx.OK | wx.ICON_ERROR, self)
+			wx.MessageBox(
+				_("NVDA could not schedule the selected add-ons for disable: {error}").format(
+					error=error,
+				),
+				_("Disable add-ons"),
+				wx.OK | wx.ICON_ERROR,
+				self,
+			)
 			return
-		wx.MessageBox(_("The selected add-ons are scheduled to be disabled when NVDA restarts. Restart NVDA when you are ready."), _("Disable add-ons"), wx.OK | wx.ICON_INFORMATION, self)
+		wx.MessageBox(
+			_(
+				"The selected add-ons are scheduled to be disabled when NVDA restarts. "
+				"Restart NVDA when you are ready.",
+			),
+			_("Disable add-ons"),
+			wx.OK | wx.ICON_INFORMATION,
+			self,
+		)
 		self.EndModal(wx.ID_OK)
 
 

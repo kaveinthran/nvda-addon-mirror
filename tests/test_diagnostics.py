@@ -81,6 +81,11 @@ class DiagnosticsEvidenceTests(unittest.TestCase):
 		with mock.patch.dict(sys.modules, {"globalVars": globalVars}):
 			self.assertTrue(diagnostics.isSecureDesktop())
 
+	def test_secure_guard_fails_closed_when_security_state_is_unavailable(self):
+		diagnostics = loadDiagnostics()
+		with mock.patch.object(diagnostics.sys, "modules", {}):
+			self.assertTrue(diagnostics.isSecureDesktop())
+
 
 if __name__ == "__main__":
 	unittest.main()
