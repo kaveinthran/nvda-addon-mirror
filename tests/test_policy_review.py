@@ -23,10 +23,17 @@ class PolicyReviewTests(unittest.TestCase):
 		fixture = helperTests.HelperSourceSupportTests()
 		helper = fixture._loadHelper({})
 		fixture.config.conf["addonStore"]["baseServerURL"] = helper.MIRROR_STORE_URL
-		fixture.config.conf["serrebiStore"] = {"originalStoreURL": "", "searchAsYouType": True}
+		fixture.config.conf["serrebiStore"] = {
+			"originalStoreURL": "", "searchAsYouType": True, "storePolicy": "official",
+		}
 		seen = []
 		globalVars = types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False))
-		with mock.patch.dict(sys.modules, {"globalVars": globalVars}), \
+		globalPlugins = types.ModuleType("globalPlugins")
+		globalPlugins.__path__ = []
+		with mock.patch.dict(sys.modules, {
+			"globalVars": globalVars, "globalPlugins": globalPlugins,
+			"globalPlugins._addonStorePolicy": policy,
+		}), \
 			mock.patch.object(helper.GlobalPlugin, "_enableStorePolicy", lambda self: seen.append(
 				fixture.config.conf["addonStore"]["baseServerURL"])), \
 			mock.patch.object(helper.GlobalPlugin, "_removeStaleBundleModule"), \
@@ -39,6 +46,7 @@ class PolicyReviewTests(unittest.TestCase):
 		self.assertEqual([helper.MIRROR_STORE_URL], seen)
 		self.assertEqual("", plugin._originalURL)
 		self.assertEqual("", fixture.config.conf["serrebiStore"]["originalStoreURL"])
+		self.assertEqual("", fixture.config.conf["addonStore"]["baseServerURL"])
 
 	def test_secure_startup_changes_no_policy_or_store_state(self):
 		fixture = helperTests.HelperSourceSupportTests()
