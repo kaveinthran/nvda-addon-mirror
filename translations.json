@@ -4324,7 +4324,8 @@
       "summary": "Voicemeeter"
     },
     "volumeManager": {
-      "summary": "Volume Manager"
+      "summary": "Volume Manager",
+      "description": "The VolumeManager add-on lets you control the main Windows volume level as well as the volume of various applications directly from NVDA. It also announces the current volume level when it is changed with the multimedia/function keys. Features: main volume control. Volume control for various applications. Microphone volume control. Muting applications and the main volume. Volume level announcements when changed with the multimedia/function keys. Setting a desired main volume level from a simple dialog. Usage: all of the following hotkeys must be pressed after enabling the layer gestures. To enable or disable the volume manager's virtual-screen gestures, press NVDA+Control+Shift+V (you can change this command in Input Gestures). If you press this key and hear a high tone, the add-on is enabled and you can use it. Pressing this key again produces a low tone, meaning the add-on is disabled. In virtual-screen mode you can use the following keys: Left / Right arrows: move through audio sessions / input-output devices. Up / Down arrows: raise / lower the volume by 1 percent. Page Up / Page Down: raise / lower the volume by 5 percent. Home / End: 100 / 0 percent volume. Digits 1 to 9: set the volume from 10 to 90% respectively. 0: set 100% volume. Ctrl+Up / Ctrl+Down: switch between the devices available for changing. Ctrl+Right: set the selected device as the default device. D: toggle the type of devices being changed, input/output. M: mute or unmute the selected session, for example the browser, or device, that is the microphone or speakers / headphones. Control+R (3 times quickly): reset the device configuration."
     },
     "votraxsc01": {
       "summary": "Votrax SC-01"
@@ -4802,6 +4803,10 @@
     "قادرين: الإدارة السحابية المتقدمة والمزامنة المركزية للبرامج": {
       "summary": "Qadreen: Advanced Cloud Management and Central Software Sync",
       "description": "Advanced add-on for the Qadreen community that manages and organizes programs and links through a non-blocking atomic cloud sync engine, with automatic conflict handling and full protection of pending data across restarts."
+    },
+    "offlineAI": {
+      "summary": "Offline AI",
+      "description": "Offline AI is an NVDA add-on that brings local artificial intelligence to your computer. All computation runs on the processor, so text, audio, and images never leave your device. An internet connection is only needed to download models. The add-on supports chat with local language models, quick actions on selected text, dictation, and audio and video transcription. OCR and image descriptions, speech synthesis, and voice cloning are also available. The built-in catalog contains Qwen, Llama, Gemma, Phi, Mistral, and DeepSeek-R1 models. You can search for models on HuggingFace or add your own GGUF files. The interface follows the NVDA language, supports translation into approximately 100 languages and speech recognition in 100 languages. Settings and chat history are preserved between updates. No Python, command line, or account is needed. No default hotkeys are assigned, so there will be no conflicts with other add-ons. All features are described in the user guide."
     }
   }
 }
