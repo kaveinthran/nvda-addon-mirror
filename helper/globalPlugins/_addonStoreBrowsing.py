@@ -96,13 +96,19 @@ def _layoutFields(fields: list, order: list[str], hidden: list[str]) -> list:
 def _snapshot(dialog: Any) -> dict:
 	store = dialog._storeVM
 	vm = store.listVM
+	selected = vm.selectedAddonId
+	# A background refresh temporarily clears the native selection. Keep the
+	# stable target until its pending restore has either completed or been
+	# cancelled by an actual user selection.
+	if selected is None and isinstance(getattr(vm, "_serrebiPendingSelection", None), str):
+		selected = vm._serrebiPendingSelection
 	return {
 		"sort": vm._sortByModelField.name, "reverse": bool(vm._reverseSort),
 		"search": vm._filterString or "", "scope": getattr(vm, "_serrebiSearchScope", "all"),
 		"channel": store._filterChannelKey.name, "enabled": store._filterEnabledDisabled.name,
 		"incompatible": bool(store._filterIncludeIncompatible),
 		"sources": sorted(vm._serrebiSources) if getattr(vm, "_serrebiSources", None) is not None else None,
-		"selected": vm.selectedAddonId,
+		"selected": selected,
 		"dateSort": getattr(vm, "_serrebiDateSort", None),
 	}
 
@@ -435,8 +441,12 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		# Translators: Opens the native checklist of catalog sources to display.
 		button = wx.Button(dialog, label=_("Filter so&urces..."))
 		helper.addItem(button)
+		dialogRef = weakref.ref(dialog)
 		def choose(evt):
 			if _isSecure():
+				return
+			dialog = dialogRef()
+			if dialog is None or not dialog:
 				return
 			with SourceFilterDialog(dialog, dialog._storeVM.listVM) as chooser:
 				if chooser.ShowModal() == wx.ID_OK:
@@ -542,6 +552,12 @@ def enable(plugin: Any, settingsPanel: Any) -> None:
 		]
 		persist()
 		for dialog in list(dialogs):
+			try:
+				isBeingDeleted = getattr(dialog, "IsBeingDeleted", None)
+				if not dialog or (callable(isBeingDeleted) and isBeingDeleted()):
+					continue
+			except RuntimeError:
+				continue
 			dialog.addonListView._refreshColumns()
 
 	def terminate():

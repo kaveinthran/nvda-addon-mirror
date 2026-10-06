@@ -18,6 +18,14 @@ class BrowsingTests(unittest.TestCase):
         wx = types.ModuleType("wx")
         wx.Dialog = object
         wx.CallAfter = lambda callback, *args: callback(*args)
+        wx.EVT_BUTTON = object()
+        class Button:
+            def __init__(self, parent, label):
+                self.handler = None
+
+            def Bind(self, event, handler):
+                self.handler = handler
+        wx.Button = Button
         handler = types.ModuleType("addonHandler")
         handler.initTranslation = lambda: None
         config = types.ModuleType("config")
@@ -76,6 +84,16 @@ class BrowsingTests(unittest.TestCase):
             vm._serrebiDateSort = dateSort
             self.assertIs(dateSort, self.module._snapshot(types.SimpleNamespace(_storeVM=store))["dateSort"])
         self.assertTrue(state["dateSort"])
+
+    def test_snapshot_keeps_pending_selection_during_loading_reset(self):
+        vm = types.SimpleNamespace(
+            _sortByModelField=types.SimpleNamespace(name="displayName"), _reverseSort=False,
+            _filterString=None, selectedAddonId=None, _serrebiPendingSelection="saved-stable-id",
+        )
+        store = types.SimpleNamespace(listVM=vm, _filterChannelKey=types.SimpleNamespace(name="ALL"),
+                                      _filterEnabledDisabled=types.SimpleNamespace(name="ALL"),
+                                      _filterIncludeIncompatible=False)
+        self.assertEqual("saved-stable-id", self.module._snapshot(types.SimpleNamespace(_storeVM=store))["selected"])
 
     def test_secure_and_unknown_context_fail_closed(self):
         globalVars = types.ModuleType("globalVars")
@@ -311,6 +329,36 @@ class BrowsingTests(unittest.TestCase):
             # A feature layered outside browsing may retain this callback.
             # It still cannot retain the destroyed dialog.
             callback()
+
+    def test_source_filter_button_handler_does_not_keep_store_alive(self):
+        modules, plugin, Dialog, ListVM, Settings, Field, Channel, Enabled, Action = self._makeAdapter()
+        with mock.patch.dict(sys.modules, modules):
+            self.module.enable(plugin, Settings)
+            vm = ListVM()
+            vm._addonsFilteredOrdered = []
+            vm._addons = {}
+            vm.updated = Action()
+            vm._sortByModelField = Field.displayName
+            vm._reverseSort = False
+            vm._filterString = None
+            vm._serrebiSources = None
+            vm.selectedAddonId = None
+            store = types.SimpleNamespace(
+                listVM=vm, _filteredStatusKey=types.SimpleNamespace(name="AVAILABLE"),
+                _filterChannelKey=Channel.STABLE, _filterEnabledDisabled=Enabled.ALL,
+                _filterIncludeIncompatible=False,
+            )
+            dialog = object.__new__(Dialog)
+            dialog._storeVM = store
+            Dialog.__init__(dialog)
+            buttons = []
+            with mock.patch.object(builtins, "_", lambda text: text, create=True):
+                dialog._createFilterControls(types.SimpleNamespace(addItem=buttons.append))
+            dialogRef = weakref.ref(dialog)
+            handler = buttons[0].handler
+            del dialog
+            self.assertIsNone(dialogRef())
+            handler(None)
 
     def test_user_selection_is_saved_without_waiting_for_a_tab_change(self):
         modules, plugin, Dialog, ListVM, Settings, Field, Channel, Enabled, Action = self._makeAdapter()
