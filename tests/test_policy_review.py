@@ -34,8 +34,9 @@ class PolicyReviewTests(unittest.TestCase):
             "globalVars": globalVars, "globalPlugins": globalPlugins,
             "globalPlugins._addonStorePolicy": policy,
         }), \
-            mock.patch.object(helper.GlobalPlugin, "_enableStorePolicy", lambda self: seen.append(
-                fixture.config.conf["addonStore"]["baseServerURL"])), \
+            mock.patch.object(helper.GlobalPlugin, "_enableStorePolicy", lambda self: (
+                seen.append(fixture.config.conf["addonStore"]["baseServerURL"]) or True
+            )), \
             mock.patch.object(helper.GlobalPlugin, "_removeStaleBundleModule"), \
             mock.patch.object(helper.GlobalPlugin, "_enableSourceSupport"), \
             mock.patch.object(helper.GlobalPlugin, "_enableStoreEnhancements"), \
@@ -47,6 +48,29 @@ class PolicyReviewTests(unittest.TestCase):
         self.assertEqual("", plugin._originalURL)
         self.assertEqual("", fixture.config.conf["serrebiStore"]["originalStoreURL"])
         self.assertEqual("", fixture.config.conf["addonStore"]["baseServerURL"])
+
+    def test_failed_policy_install_leaves_store_url_and_ui_untouched(self):
+        fixture = helperTests.HelperSourceSupportTests()
+        helper = fixture._loadHelper({})
+        fixture.config.conf["addonStore"]["baseServerURL"] = "https://old.example"
+        fixture.config.conf["serrebiStore"] = {
+            "originalStoreURL": "", "originalStoreCaptured": False,
+            "searchAsYouType": True,
+        }
+        globalVars = types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False))
+        calls = []
+        with mock.patch.dict(sys.modules, {"globalVars": globalVars}), \
+            mock.patch.object(helper.GlobalPlugin, "_enableStorePolicy", return_value=False), \
+            mock.patch.object(helper.GlobalPlugin, "_removeStaleBundleModule"), \
+            mock.patch.object(helper.GlobalPlugin, "_enableSourceSupport", side_effect=lambda: calls.append("source")), \
+            mock.patch.object(helper.GlobalPlugin, "_enableStoreEnhancements", side_effect=lambda: calls.append("enhancements")), \
+            mock.patch.object(helper.GlobalPlugin, "_addToolsMenuItems", side_effect=lambda: calls.append("menu")), \
+            mock.patch.object(helper.GlobalPlugin, "_registerSettingsPanel", side_effect=lambda: calls.append("settings")), \
+            mock.patch.object(helper.GlobalPlugin, "_refreshStore", side_effect=lambda: calls.append("refresh")):
+            plugin = helper.GlobalPlugin()
+        self.assertFalse(plugin._urlApplied)
+        self.assertEqual("https://old.example", fixture.config.conf["addonStore"]["baseServerURL"])
+        self.assertEqual([], calls)
 
     def test_secure_startup_changes_no_policy_or_store_state(self):
         fixture = helperTests.HelperSourceSupportTests()
@@ -226,6 +250,18 @@ class PolicyReviewTests(unittest.TestCase):
             manager = managerClass()
             manager.getLatestCompatibleAddons()
             self.assertEqual([True], finished)
+
+    def test_initial_worker_keeps_initial_source_for_cache_attribution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            router, _network, managerClass, _store, _baseURL, seen = self._router(directory)
+            router.defaultURL = "https://selected.example"
+            router.initialURL = "https://before-helper.example"
+            router.initialThread = threading.current_thread()
+            manager = managerClass()
+            self.assertEqual("https://before-helper.example", manager.getLatestCompatibleAddons())
+            self.assertEqual(["https://before-helper.example"], seen)
+            self.assertIn("https://before-helper.example", router.caches)
+            self.assertNotIn("https://selected.example", router.caches)
 
     def test_profile_switch_callback_accepts_nvda_prev_conf_keyword(self):
         fixture = helperTests.HelperSourceSupportTests()

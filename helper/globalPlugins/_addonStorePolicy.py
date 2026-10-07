@@ -61,6 +61,12 @@ class Router:
 			_source.reset(token)
 
 	def currentURL(self):
+		# The manager's startup worker existed before the router was installed.
+		# It must keep its original source both for network routing and for cache
+		# attribution.  Otherwise a dynamically patched startup fetch can store
+		# the old catalog under the newly selected source.
+		if self._isInitial():
+			return self.initialURL or OFFICIAL
 		return self.defaultURL if _source.get() is None else _source.get()
 
 	def install(self, network, dataManager, storeModule, patch):

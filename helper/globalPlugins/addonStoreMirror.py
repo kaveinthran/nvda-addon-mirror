@@ -208,7 +208,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			configuredURL = MIRROR_STORE_URL
 		# Install routing before changing global configuration: the initial core
 		# worker must keep the same source for its hash and catalog requests.
-		self._enableStorePolicy()
+		if not self._enableStorePolicy():
+			# Do not point core's singleton data manager at a different endpoint
+			# unless source-aware routing is in place.  Its existing cache otherwise
+			# has no source identity and can mix catalogs.
+			return
 		config.conf["addonStore"]["baseServerURL"] = configuredURL
 		self._urlApplied = True
 		log.info(f"Set the Add-on store mirror to: {MIRROR_STORE_URL}")
@@ -430,13 +434,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		try:
 			import globalVars
 			if globalVars.appArgs.secure:
-				return
+				return False
+		except ImportError:
+			# Unit-test loaders and older standalone contexts do not expose
+			# startup arguments. Continue to the feature imports below.
+			pass
+		try:
 			from addonStore import dataManager, network
 			from gui.addonStoreGui.viewModels import store
 			from globalPlugins._addonStorePolicy import Router, selectedURL
 			manager = dataManager.addonDataManager
 			if manager is None:
-				return
+				return False
 			self._policyPatchStart = len(self._sourceSupportPatches)
 			router = Router(
 				selectedURL(config.conf["serrebiStore"]),
@@ -447,9 +456,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			router.install(network, dataManager, store, self._rememberPatch)
 			_activePolicyRouter = router
 			self._registerPolicyProfileSwitch()
+			return True
 		except Exception:
 			self._restoreStorePolicy(rollback=True)
-			return
+			log.exception("SerrebiRadio store mirror could not enable source routing")
+			return False
 
 	def _registerPolicyProfileSwitch(self):
 		callback = getattr(config, "post_configProfileSwitch", None)
