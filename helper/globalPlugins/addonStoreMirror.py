@@ -14,6 +14,9 @@ import builtins
 import importlib
 import os
 import threading
+import weakref
+from typing import Any
+from urllib.parse import urlsplit
 
 import wx
 
@@ -29,6 +32,7 @@ MIRROR_STORE_URL = "https://serrebidev.github.io/nvda-addon-mirror"
 OFFICIAL_STORE_URL = ""
 STORE_SOURCE_KEY = "storeSource"
 MODEL_SOURCE_ATTRIBUTE = "_serrebiStoreSource"
+SEARCH_SCOPES = ("all", "title", "author", "description", "id", "source")
 
 confspec = {
 	"originalStoreURL": "string(default='')",
@@ -329,6 +333,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		for enable in (
 			self._enableDeferredSearch,
 			self._enableDuplicateInstallWarning,
+			self._enableSharingAndScopedSearch,
 		):
 			try:
 				enable()
@@ -336,6 +341,142 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				log.exception(
 					f"SerrebiRadio store mirror could not enable {enable.__name__}",
 				)
+
+	def _enableSharingAndScopedSearch(self):
+		"""Add read-only actions and explicit fields without replacing core filters."""
+		if _isSecureContext():
+			return
+		start = len(self._sourceSupportPatches)
+		try:
+			actions = importlib.import_module("gui.addonStoreGui.viewModels.action")
+			stores = importlib.import_module("gui.addonStoreGui.viewModels.store")
+			lists = importlib.import_module("gui.addonStoreGui.viewModels.addonList")
+			dialogs = importlib.import_module("gui.addonStoreGui.controls.storeDialog")
+			storeClass = stores.AddonStoreVM
+			listClass = lists.AddonListVM
+			dialogClass = dialogs.AddonStoreDialog
+			originalActionsList = storeClass._makeActionsList
+			originalFilteredIds = listClass._getFilteredSortedIds
+			originalCreateControls = dialogClass._createFilterControls
+			plugin = self
+
+			def makeActionsList(store):
+				actionList = originalActionsList(store)
+				if _isSecureContext():
+					return actionList
+				selected = store.listVM.getSelection()
+				# Translators: Copies an add-on's name, description and source/homepage link.
+				shareLabel = _("&Share add-on details")
+				# Translators: Copies the download URL of the selected add-on release.
+				downloadLabel = _("Copy download lin&k")
+				for label, getText in (
+					(shareLabel, lambda model: _getShareText(model)),
+					(downloadLabel, lambda model: _getSafeWebURL(getattr(model, "URL", ""))),
+				):
+					actionList.append(actions.AddonActionVM(
+						displayName=label,
+						actionHandler=lambda item, getText=getText: plugin._copyStoreText(getText(item.model)),
+						validCheck=lambda item, getText=getText: (
+							not _isSecureContext() and bool(getText(item.model))
+						),
+						actionTarget=selected,
+					))
+				return actionList
+
+			def getFilteredSortedIds(viewModel):
+				ordered = originalFilteredIds(viewModel)
+				scope = getattr(viewModel, "_serrebiSearchScope", "all")
+				term = viewModel._filterString
+				if scope == "all" or scope not in SEARCH_SCOPES or not term:
+					return ordered
+				# Narrow core's result using its real query and ordering. This retains
+				# modern relevance ranking and the helper's source-search adapter.
+				return [
+					addonId for addonId in ordered
+					if _matchesSearchScope(viewModel._addons[addonId].model, term, scope)
+				]
+
+			def createFilterControls(dialog, *args, **kwargs):
+				originalCreateControls(dialog, *args, **kwargs)
+				if _isSecureContext():
+					return
+				helper = args[0] if args else kwargs.get("filterCtrlHelper")
+				if helper is None or not hasattr(helper, "addLabeledControl"):
+					return
+				# Translators: Search scope choice retaining the store's normal broad search.
+				allText = _("All text")
+				# Translators: Searches only an add-on's displayed title.
+				title = _("Title")
+				# Translators: Searches the installed author or catalog publisher.
+				author = _("Author or publisher")
+				# Translators: Searches only an add-on's description.
+				description = _("Description")
+				# Translators: Searches the add-on's internal manifest identifier.
+				identifier = _("Add-on ID")
+				# Translators: Searches the add-on's upstream catalog or release source.
+				source = _("Source")
+				dialog._serrebiSearchScopeCtrl = helper.addLabeledControl(
+					# Translators: Label for the explicit field used by Add-on Store search.
+					labelText=_("Search &field:"),
+					wxCtrlClass=wx.Choice,
+					choices=[allText, title, author, description, identifier, source],
+				)
+				dialog._serrebiSearchScopeCtrl.SetSelection(0)
+				dialogRef = weakref.ref(dialog)
+				def onScopeChange(evt):
+					current = dialogRef()
+					if current is not None:
+						plugin._onSearchScopeChange(current, evt)
+					else:
+						evt.Skip()
+				dialog._serrebiSearchScopeCtrl.Bind(
+					wx.EVT_CHOICE,
+					onScopeChange,
+				)
+
+			self._rememberPatch(storeClass, "_makeActionsList", makeActionsList)
+			self._rememberPatch(listClass, "_getFilteredSortedIds", getFilteredSortedIds)
+			self._rememberPatch(dialogClass, "_createFilterControls", createFilterControls)
+		except Exception:
+			# Keep provenance/deferred search patches installed before this family.
+			self._restorePatchesFrom(start)
+			log.exception("Failed to add sharing and scoped search to the Add-on Store")
+
+	def _onSearchScopeChange(self, dialog, evt):
+		if _isSecureContext():
+			return
+		index = dialog._serrebiSearchScopeCtrl.GetSelection()
+		if not 0 <= index < len(SEARCH_SCOPES):
+			return
+		dialog._storeVM.listVM._serrebiSearchScope = SEARCH_SCOPES[index]
+		# A scope choice is an explicit action: apply pending text even in
+		# deferred mode. Typing still goes through the existing Enter policy.
+		# Use core's text-change lifecycle (selection, relevance sort and sort
+		# control synchronization). A Choice event bypasses deferred typing.
+		dialog.onFilterTextChange(evt)
+
+	def _copyStoreText(self, text):
+		if _isSecureContext():
+			return
+		import api
+		import ui
+
+		try:
+			copied = api.copyToClip(text)
+		except Exception:
+			copied = False
+		if copied:
+			# Translators: Confirmation after copying selected add-on metadata/link.
+			ui.message(_("Copied to clipboard"))
+		else:
+			# Translators: Clipboard is unavailable; the selected text was not copied.
+			ui.message(_("Could not copy to clipboard"))
+
+	def _restorePatchesFrom(self, start):
+		for owner, name, original, replacement in reversed(self._sourceSupportPatches[start:]):
+			if owner.__dict__.get(name) is replacement:
+				setattr(owner, name, original)
+		del self._sourceSupportPatches[start:]
 
 	def _enableDeferredSearch(self):
 		"""Let the store list filter on demand instead of on every keystroke.
@@ -372,11 +513,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			originalCreateFilterControls(dialog, *args, **kwargs)
 			searchCtrl = getattr(dialog, "searchFilterCtrl", None)
 			if searchCtrl is not None:
+				dialogRef = weakref.ref(dialog)
+				def onSearchKey(evt):
+					current = dialogRef()
+					if current is not None:
+						plugin._onSearchCharHook(current, evt)
+					else:
+						evt.Skip()
 				searchCtrl.Bind(
 					# Windows consumes Enter during dialog navigation before a
 					# plain TextCtrl receives EVT_KEY_DOWN. Catch it earlier.
 					wx.EVT_CHAR_HOOK,
-					lambda evt: plugin._onSearchCharHook(dialog, evt),
+					onSearchKey,
 				)
 
 		def onFilterTextChange(dialog, evt):
@@ -690,9 +838,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				postPopup()
 
 	def _makeCloseRestorer(self, dialog, restoreURL):
+		dialogRef = weakref.ref(dialog)
 		def onDestroy(evt):
 			# Destroy events from child controls reach the dialog too.
-			if evt.GetEventObject() is dialog:
+			current = dialogRef()
+			if current is not None and evt.GetEventObject() is current:
 				config.conf["addonStore"]["baseServerURL"] = restoreURL
 				self._refreshStore()
 			evt.Skip()
@@ -703,6 +853,61 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 def _getModelSource(model):
 	source = getattr(model, MODEL_SOURCE_ATTRIBUTE, "")
 	return source if isinstance(source, str) else ""
+
+
+def _isSecureContext() -> bool:
+	try:
+		import globalVars
+		return bool(globalVars.appArgs.secure)
+	except (ImportError, AttributeError):
+		return True
+
+
+def _getSafeWebURL(value: Any) -> str:
+	"""Return an uncredentialed HTTP(S) URL, or empty text for unusable metadata."""
+	if not isinstance(value, str) or any(char.isspace() or not char.isprintable() for char in value):
+		return ""
+	try:
+		parsed = urlsplit(value)
+		if parsed.scheme not in ("https", "http") or not parsed.hostname:
+			return ""
+		if parsed.username is not None or parsed.password is not None or "\\" in value:
+			return ""
+		# Accessing port validates an explicit port's range and spelling.
+		parsed.port
+	except ValueError:
+		return ""
+	return value
+
+
+def _getShareText(model: Any) -> str:
+	parts = []
+	for field in ("displayName", "description"):
+		value = getattr(model, field, "")
+		if isinstance(value, str) and value.strip():
+			parts.append(value.strip())
+	url = _getSafeWebURL(getattr(model, "sourceURL", ""))
+	if not url:
+		url = _getSafeWebURL(getattr(model, "homepage", ""))
+	if url:
+		parts.append(url)
+	return "\n\n".join(parts)
+
+
+def _matchesSearchScope(model: Any, term: str, scope: str) -> bool:
+	fields = {
+		"title": ("displayName",),
+		"author": ("author", "publisher"),
+		"description": ("description",),
+		"id": ("addonId",),
+	}
+	if scope == "source":
+		return term.casefold() in _getModelSource(model).casefold()
+	return any(
+		term.casefold() in value.casefold()
+		for field in fields.get(scope, ())
+		if isinstance(value := getattr(model, field, ""), str)
+	)
 
 
 def _getSourceAtIndex(listViewModel, index):
