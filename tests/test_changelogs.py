@@ -2,7 +2,9 @@
 import importlib.util
 from pathlib import Path
 import sys
+import threading
 import types
+from http.client import IncompleteRead
 import unittest
 from urllib.error import HTTPError
 from unittest import mock
@@ -69,11 +71,70 @@ class ChangelogTests(unittest.TestCase):
         self.assertEqual("catalog; rateLimit", changelogs.historyForModel(model, failed)[0][2])
 
     def test_native_manifest_changelog_is_used_without_store_factory_metadata(self):
-        model = Model(sourceURL=None, addonVersionName="1.0", homepage=None, changelog="Manifest notes.")
+        # NVDA 2025.1's external AddonManifestModel exposes the manifest but
+        # does not provide the newer ``changelog`` property.
+        model = Model(sourceURL=None, addonVersionName="1.0", homepage=None,
+                      manifest={"changelog": "Manifest notes."})
         self.assertEqual(
             [("1.0", "Manifest notes.", "catalog; notGitHub")],
             changelogs.historyForModel(model, changelogs.ReleaseHistory(fetch=lambda _repo: [])),
         )
+
+    def test_incomplete_http_read_uses_network_fallback(self):
+        model = Model(sourceURL="https://github.com/owner/project", addonVersionName="1.0", homepage=None)
+        history = changelogs.ReleaseHistory(
+            fetch=lambda _repo: (_ for _ in ()).throw(IncompleteRead(b"partial", 10)),
+        )
+        self.assertEqual("networkError", changelogs.historyForModel(model, history)[0][2])
+
+    def test_async_requests_share_a_repository_fetch_and_bound_workers(self):
+        started = []
+        release = threading.Event()
+        complete = threading.Event()
+        lock = threading.Lock()
+        active = [0]
+        peak = [0]
+
+        def fetch(repository):
+            with lock:
+                started.append(repository)
+                active[0] += 1
+                peak[0] = max(peak[0], active[0])
+            release.wait(2)
+            with lock:
+                active[0] -= 1
+            return [{"tag_name": repository, "body": "Notes"}]
+
+        history = changelogs.ReleaseHistory(fetch=fetch)
+        results = []
+        expected = changelogs.MAX_CONCURRENT_FETCHES + 3
+
+        def received(result, error):
+            results.append((result, error))
+            if len(results) == expected:
+                complete.set()
+
+        # These must join one fetch, while different repositories never run
+        # more than the scheduler's worker limit at the same time.
+        history.getAsync("owner/shared", received)
+        history.getAsync("owner/shared", received)
+        for index in range(expected - 2):
+            history.getAsync("owner/repo%d" % index, received)
+        self.assertEqual(1, started.count("owner/shared"))
+        self.assertLessEqual(peak[0], changelogs.MAX_CONCURRENT_FETCHES)
+        release.set()
+        self.assertTrue(complete.wait(2))
+        self.assertEqual(1, started.count("owner/shared"))
+        self.assertLessEqual(peak[0], changelogs.MAX_CONCURRENT_FETCHES)
+        self.assertEqual(expected, len(results))
+
+    def test_failed_refresh_keeps_successful_cached_notes(self):
+        now = [0]
+        responses = [[{"tag_name": "1.0", "body": "Good notes"}], OSError("offline")]
+        history = changelogs.ReleaseHistory(fetch=lambda _repo: responses.pop(0), now=lambda: now[0])
+        self.assertEqual(([{"tag_name": "1.0", "body": "Good notes"}], None), history.get("owner/project"))
+        now[0] += changelogs.CACHE_SECONDS + 1
+        self.assertEqual(([{"tag_name": "1.0", "body": "Good notes"}], None), history.get("owner/project"))
 
     def test_cache_prevents_repeat_fetch_inside_ttl(self):
         calls = []

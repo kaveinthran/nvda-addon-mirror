@@ -5,6 +5,7 @@ asks the Add-on Store downloader for an add-on package: GitHub's release API is
 used only after the catalog has supplied a verified GitHub repository URL.
 """
 import builtins
+from http.client import HTTPException
 import json
 import math
 import re
@@ -26,6 +27,8 @@ CACHE_SECONDS = 15 * 60
 MAX_RELEASES = 30
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_CACHED_REPOSITORIES = 64
+MAX_CONCURRENT_FETCHES = 4
+MAX_PENDING_REPOSITORIES = 64
 
 
 def githubRepository(sourceURL):
@@ -71,6 +74,9 @@ class ReleaseHistory:
 		self._now = now
 		self._cache = {}
 		self._lock = threading.Lock()
+		self._inFlight = {}
+		self._pending = []
+		self._activeFetches = 0
 
 	def get(self, repository):
 		if not repository:
@@ -79,20 +85,77 @@ class ReleaseHistory:
 			cached = self._cache.get(repository)
 			if cached and self._now() - cached[0] < CACHE_SECONDS:
 				return cached[1], cached[2]
-		try:
-			releases = self._fetch(repository)
-			if not isinstance(releases, list):
-				raise ValueError("GitHub returned invalid release data")
-			result, error = releases[:MAX_RELEASES], None
-		except HTTPError as e:
-			result, error = [], "rateLimit" if e.code in (403, 429) else "networkError"
-		except (URLError, ValueError, OSError):
-			result, error = [], "networkError"
+		completed = threading.Event()
+		answer = []
+		def done(result, error):
+			answer[:] = [result, error]
+			completed.set()
+		self.getAsync(repository, done)
+		completed.wait()
+		return tuple(answer)
+
+	def getAsync(self, repository, callback):
+		"""Fetch a repository once and notify every request waiting for it.
+
+		The bounded scheduler keeps the Store responsive when a user invokes several
+		changelogs, while duplicate requests join their repository's existing job.
+		"""
+		if not repository:
+			callback(None, "notGitHub")
+			return
+		immediate = None
 		with self._lock:
-			if repository not in self._cache and len(self._cache) >= MAX_CACHED_REPOSITORIES:
-				del self._cache[next(iter(self._cache))]
-			self._cache[repository] = (self._now(), result, error)
-		return result, error
+			cached = self._cache.get(repository)
+			if cached and self._now() - cached[0] < CACHE_SECONDS:
+				immediate = cached[1], cached[2]
+			else:
+				waiters = self._inFlight.get(repository)
+				if waiters is not None:
+					waiters.append(callback)
+					return
+				if len(self._inFlight) >= MAX_PENDING_REPOSITORIES:
+					immediate = [], "networkError"
+				else:
+					self._inFlight[repository] = [callback]
+					self._pending.append(repository)
+					self._startPendingLocked()
+		if immediate is not None:
+			callback(*immediate)
+
+	def _startPendingLocked(self):
+		while self._pending and self._activeFetches < MAX_CONCURRENT_FETCHES:
+			repository = self._pending.pop(0)
+			self._activeFetches += 1
+			threading.Thread(
+				target=self._fetchAndNotify, args=(repository,), name="addonStoreChangelog", daemon=True,
+			).start()
+
+	def _fetchAndNotify(self, repository):
+		try:
+			try:
+				releases = self._fetch(repository)
+				if not isinstance(releases, list):
+					raise ValueError("GitHub returned invalid release data")
+				result, error = releases[:MAX_RELEASES], None
+			except HTTPError as e:
+				result, error = [], "rateLimit" if e.code in (403, 429) else "networkError"
+			except (HTTPException, URLError, ValueError, OSError):
+				result, error = [], "networkError"
+			with self._lock:
+				previous = self._cache.get(repository)
+				# A refresh failure must not replace usable cached notes.
+				if error and previous and previous[2] is None:
+					result, error = previous[1], previous[2]
+				elif repository not in self._cache and len(self._cache) >= MAX_CACHED_REPOSITORIES:
+					del self._cache[next(iter(self._cache))]
+				self._cache[repository] = (self._now(), result, error)
+				callbacks = self._inFlight.pop(repository)
+		finally:
+			with self._lock:
+				self._activeFetches -= 1
+				self._startPendingLocked()
+		for callback in callbacks:
+			callback(result, error)
 
 	@staticmethod
 	def _fetchJSON(repository):
@@ -113,7 +176,11 @@ def _catalogNote(model):
 	if not isinstance(note, str):
 		# External/manually installed models do not pass through the store-data
 		# factories, but NVDA exposes their manifest changelog natively.
-		note = getattr(model, "changelog", "")
+		note = getattr(model, "changelog", None)
+	if not isinstance(note, str):
+		manifest = getattr(model, "manifest", None)
+		if hasattr(manifest, "get"):
+			note = manifest.get("changelog")
 	return note.strip() if isinstance(note, str) else ""
 
 
@@ -147,6 +214,11 @@ def historyForModel(model, history):
 	"""Return version, notes, provenance records without inventing history."""
 	repository = githubRepository(getattr(model, "sourceURL", None))
 	releases, error = history.get(repository)
+	return _historyRows(model, releases, error)
+
+
+def _historyRows(model, releases, error):
+	"""Format fetched release data, including the catalog fallback."""
 	if error:
 		return _fallback(model, error)
 	rows = []
@@ -338,8 +410,8 @@ class ChangelogFeature:
 		generation = self._generation
 		self._requestGeneration += 1
 		requestGeneration = self._requestGeneration
-		def worker():
-			rows = historyForModel(item.model, self.history)
+		def fetched(releases, error):
+			rows = _historyRows(item.model, releases, error)
 			if generation != self._generation or requestGeneration != self._requestGeneration:
 				return
 			try:
@@ -350,7 +422,7 @@ class ChangelogFeature:
 				)
 			except Exception:
 				return
-		threading.Thread(target=worker, name="addonStoreChangelog", daemon=True).start()
+		self.history.getAsync(githubRepository(getattr(item.model, "sourceURL", None)), fetched)
 
 	def _showDialog(self, name, rows, generation, requestGeneration, dialogRef):
 		parent = dialogRef()
