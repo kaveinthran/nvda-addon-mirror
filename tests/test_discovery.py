@@ -30,8 +30,8 @@ class DiscoveryTests(unittest.TestCase):
             model("three", "Three", sourceURL="https://github.com/ada/other"),
         ])
         self.assertEqual(["one", "two", "three"], [item[0].addonId for item in matches])
-        self.assertEqual(("author/publisher",), matches[1][1])
-        self.assertEqual(("repository owner",), matches[2][1])
+        self.assertEqual(((discovery.AUTHOR_PUBLISHER, ()),), matches[1][1])
+        self.assertEqual(((discovery.REPOSITORY_OWNER, ()),), matches[2][1])
 
     def test_similarity_is_weighted_excludes_self_and_explains_match(self):
         selected = model("one", "Network Tools", "Manage network profiles")
@@ -41,8 +41,11 @@ class DiscoveryTests(unittest.TestCase):
             model("three", "Profiles", "Manage network profiles"),
         ])
         self.assertEqual(["two", "three"], [item[0].addonId for item in matches])
-        self.assertIn("title: network", matches[0][1])
-        self.assertIn("description: manage, network, profiles", matches[1][1])
+        self.assertIn((discovery.SIMILAR_TITLE, ("network",)), matches[0][1])
+        self.assertIn(
+            (discovery.SIMILAR_DESCRIPTION, ("manage", "network", "profiles")),
+            matches[1][1],
+        )
 
     def test_repository_accepts_only_plain_https_github_repo(self):
         self.assertEqual(("owner", "repo"), discovery.githubRepository("https://github.com/Owner/repo.git"))
@@ -57,7 +60,18 @@ class DiscoveryTests(unittest.TestCase):
 
     def test_cross_field_similarity_has_an_explanation(self):
         matches = discovery.similarMatches(model("one", "Network"), [model("two", "Tools", "Network")])
-        self.assertEqual(("title/description terms: network",), matches[0][1])
+        self.assertEqual(
+            ((discovery.SIMILAR_TERMS, ("network",)),),
+            matches[0][1],
+        )
+
+    def test_similarity_keeps_later_matching_channel_when_first_does_not_match(self):
+        matches = discovery.similarMatches(model("one", "Network"), [
+            model("two", "Unrelated"),
+            model("two", "Network helper"),
+        ])
+        self.assertEqual(["two"], [item[0].addonId for item in matches])
+        self.assertEqual("Network helper", matches[0][0].displayName)
 
     def test_missing_author_identity_has_no_invented_matches(self):
         selected = model("one", "One")
@@ -82,10 +96,19 @@ class DiscoveryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 discovery.cloneRepository("https://github.com/owner/repo", "G:\\new-repo")
 
-    def test_clone_sanitizes_git_failure(self):
+    def test_clone_returns_typed_failures_without_spoken_english(self):
         with mock.patch.object(discovery.subprocess, "run", return_value=SimpleNamespace(returncode=1)):
-            with self.assertRaisesRegex(RuntimeError, "could not clone"):
+            with self.assertRaises(discovery.CloneFailure) as raised:
                 discovery.cloneRepository("https://github.com/owner/repo", "G:\\new-repo")
+        self.assertEqual("cloneFailed", raised.exception.code)
+        with mock.patch.object(discovery.subprocess, "run", side_effect=subprocess.TimeoutExpired("git", 1)):
+            with self.assertRaises(discovery.CloneFailure) as raised:
+                discovery.cloneRepository("https://github.com/owner/repo", "G:\\new-repo")
+        self.assertEqual("timeout", raised.exception.code)
+        with mock.patch.object(discovery.subprocess, "run", side_effect=OSError("missing git")):
+            with self.assertRaises(discovery.CloneFailure) as raised:
+                discovery.cloneRepository("https://github.com/owner/repo", "G:\\new-repo")
+        self.assertEqual("gitUnavailable", raised.exception.code)
 
 
 if __name__ == "__main__":

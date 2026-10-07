@@ -8,8 +8,8 @@ clone repositories containing material you do not trust.
    author, _author name_** opens a native selectable results list. Confirm its
    cells contain the actual author/publisher, repository owner, repository and
    match reason, rather than only the column headings. The selected add-on may
-   be the sole result; in that case confirm it says the result is limited to
-   the loaded catalog. Where another channel for the same add-on exists, it
+   be the sole result; in that case confirm the picker says results are limited
+   to the loaded catalog. Where another channel for the same add-on exists, it
    must not be counted twice. Check that author/publisher and repository-owner
    matches are named separately. Arrow to a different result and press Enter.
    The picker should close and the exact add-on/channel should become the only

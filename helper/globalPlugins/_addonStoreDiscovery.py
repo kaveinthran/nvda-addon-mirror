@@ -19,6 +19,23 @@ _STOP_WORDS = frozenset({
 	"addon", "add-on", "and", "for", "from", "into", "nvda", "the", "this", "with",
 })
 
+# These values cross the boundary into addonStoreMirror.py.  Keep them as
+# symbols rather than English UI text: the helper owns translation while this
+# module deliberately remains independent from NVDA's GUI imports.
+AUTHOR_PUBLISHER = "authorPublisher"
+REPOSITORY_OWNER = "repositoryOwner"
+SIMILAR_TITLE = "title"
+SIMILAR_DESCRIPTION = "description"
+SIMILAR_TERMS = "titleDescriptionTerms"
+
+
+class CloneFailure(RuntimeError):
+	"""A clone failure represented by a UI-localizable symbolic code."""
+
+	def __init__(self, code):
+		super().__init__(code)
+		self.code = code
+
 
 def safeHttpsURL(value):
 	"""Return an HTTPS URL suitable for opening or cloning, otherwise None."""
@@ -119,9 +136,9 @@ def authorMatches(selectedModel, models):
 		candidateRepo = githubRepository(getattr(model, "sourceURL", None))
 		evidence = []
 		if identity and candidateIdentity and identity.casefold() == candidateIdentity.casefold():
-			evidence.append("author/publisher")
+			evidence.append((AUTHOR_PUBLISHER, ()))
 		if selectedOwner and candidateRepo and selectedOwner == candidateRepo[0]:
-			evidence.append("repository owner")
+			evidence.append((REPOSITORY_OWNER, ()))
 		if evidence:
 			seen.add(addonId)
 			results.append((model, tuple(evidence)))
@@ -153,7 +170,6 @@ def similarMatches(selectedModel, models, limit=12):
 		addonId = str(getattr(model, "addonId", "")).casefold()
 		if not addonId or addonId == selectedId or addonId in seen:
 			continue
-		seen.add(addonId)
 		title = Counter(_tokens(getattr(model, "displayName", "")))
 		description = Counter(_tokens(getattr(model, "description", "")))
 		weights = Counter(description)
@@ -162,15 +178,18 @@ def similarMatches(selectedModel, models, limit=12):
 		score = sum(min(selectedWeights[token], weights[token]) for token in shared)
 		if not score:
 			continue
+		# A catalog can contain stable and development channels for one add-on.
+		# Only a positive channel match may suppress a later matching channel.
+		seen.add(addonId)
 		reasons = []
 		sharedTitle = sorted(set(selectedTitle) & set(title))
 		sharedDescription = sorted(set(selectedDescription) & set(description))
 		if sharedTitle:
-			reasons.append("title: " + ", ".join(sharedTitle[:4]))
+			reasons.append((SIMILAR_TITLE, tuple(sharedTitle[:4])))
 		if sharedDescription:
-			reasons.append("description: " + ", ".join(sharedDescription[:4]))
+			reasons.append((SIMILAR_DESCRIPTION, tuple(sharedDescription[:4])))
 		if not reasons:
-			reasons.append("title/description terms: " + ", ".join(shared[:4]))
+			reasons.append((SIMILAR_TERMS, tuple(shared[:4])))
 		results.append((score, displayName(model).casefold(), addonId, model, tuple(reasons)))
 	results.sort(key=lambda item: (-item[0], item[1], item[2]))
 	return [(item[3], item[4], item[0]) for item in results[:limit]]
@@ -194,9 +213,9 @@ def cloneRepository(url, destination, timeout=120):
 			creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
 		)
 	except subprocess.TimeoutExpired as error:
-		raise RuntimeError("Cloning the repository timed out.") from error
+		raise CloneFailure("timeout") from error
 	except OSError as error:
-		raise RuntimeError("Git could not start. Ensure Git is installed.") from error
+		raise CloneFailure("gitUnavailable") from error
 	if completed.returncode:
-		raise RuntimeError("Git could not clone the repository.")
+		raise CloneFailure("cloneFailed")
 	return destination

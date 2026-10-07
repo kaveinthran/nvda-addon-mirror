@@ -579,8 +579,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			author,
 			owner,
 			repositoryName,
-			evidence or _("No match reason available"),
+			self._discoveryReasonText(evidence),
 		)
+
+	def _discoveryReasonText(self, evidence):
+		"""Translate symbolic discovery evidence at the UI boundary."""
+		if not evidence:
+			return _("No match reason available")
+		if isinstance(evidence, str):
+			return evidence
+		parts = []
+		for kind, terms in evidence:
+			if kind == "authorPublisher":
+				parts.append(_("Author/publisher"))
+			elif kind == "repositoryOwner":
+				parts.append(_("Repository owner"))
+			elif kind == "title":
+				parts.append(_("Title: {terms}").format(terms=", ".join(terms)))
+			elif kind == "description":
+				parts.append(_("Description: {terms}").format(terms=", ".join(terms)))
+			elif kind == "titleDescriptionTerms":
+				parts.append(_("Title or description terms: {terms}").format(
+					terms=", ".join(terms),
+				))
+		return "; ".join(parts) if parts else _("No match reason available")
 
 	def _showResults(self, storeVM, title, prompt, results, discovery):
 		"""Enter returns the selected result to its normal native Store UI."""
@@ -650,8 +672,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			_("More by author, {author}").format(
 				author=discovery.authorName(item.model) or _("Unknown author"),
 			),
-			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
-			[(model, ", ".join(evidence)) for model, evidence in matches],
+			_("Choose an add-on. Results are limited to the loaded catalog. "
+			  "Press Enter to return to it in the Add-on Store."),
+			matches,
 			discovery,
 		)
 
@@ -665,10 +688,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		self._showResults(
 			storeVM,
 			_("More like {name}").format(name=discovery.displayName(item.model)),
-			_("Choose an add-on. Press Enter to return to it in the Add-on Store."),
-			[(model, "{reasons} (score {score})".format(
-				reasons="; ".join(reasons), score=score,
-			)) for model, reasons, score in matches],
+			_("Choose an add-on. Results are limited to the loaded catalog. "
+			  "Press Enter to return to it in the Add-on Store."),
+			[(model, reasons) for model, reasons, _score in matches],
 			discovery,
 		)
 
@@ -712,13 +734,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				discovery.cloneRepository(discovery.repositoryURL(item.model), destination)
 				message = _("Repository cloned to {path}.").format(path=destination)
 			except (RuntimeError, ValueError) as error:
-				message = str(error)
+				message = self._cloneFailureMessage(error, discovery)
 			def complete():
 				if generation == self._discoveryGeneration and not self._isSecureDesktop():
 					import ui
 					ui.message(message)
 			wx.CallAfter(complete)
 		threading.Thread(target=work, name="cloneAddonRepository", daemon=True).start()
+
+	def _cloneFailureMessage(self, error, discovery):
+		"""Translate only typed clone failures; never speak subprocess text."""
+		failureClass = getattr(discovery, "CloneFailure", ())
+		if isinstance(error, failureClass):
+			return {
+				"timeout": _("Cloning the repository timed out."),
+				"gitUnavailable": _("Git could not start. Ensure Git is installed."),
+				"cloneFailed": _("Git could not clone the repository."),
+			}.get(error.code, _("The repository could not be cloned."))
+		return _("The repository could not be cloned.")
 
 	def _enableDeferredSearch(self):
 		"""Let the store list filter on demand instead of on every keystroke.

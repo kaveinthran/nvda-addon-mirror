@@ -982,6 +982,29 @@ class HelperSettingsPanelTests(unittest.TestCase):
 
 
 class HelperInitTerminateTests(unittest.TestCase):
+    def test_discovery_reason_and_clone_failure_are_localized_at_the_ui_boundary(self):
+        helper = self._loadHelper({})
+        translations = {
+            "Author/publisher": "Autor",
+            "Title: {terms}": "Titel: {terms}",
+            "Git could not clone the repository.": "Git konnte das Repository nicht klonen.",
+        }
+        helper.__dict__["_"] = lambda text: translations.get(text, text)
+        plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
+        self.assertEqual(
+            "Autor; Titel: network",
+            plugin._discoveryReasonText((("authorPublisher", ()), ("title", ("network",)))),
+        )
+        failure = type("CloneFailure", (RuntimeError,), {"code": "cloneFailed"})("cloneFailed")
+        discovery = types.SimpleNamespace(CloneFailure=failure.__class__)
+        self.assertEqual(
+            "Git konnte das Repository nicht klonen.",
+            plugin._cloneFailureMessage(failure, discovery),
+        )
+        self.assertEqual(
+            "The repository could not be cloned.",
+            plugin._cloneFailureMessage(RuntimeError("private subprocess text"), discovery),
+        )
     """Full __init__/terminate wiring with every collaborator faked."""
 
     _loadHelper = HelperSourceSupportTests._loadHelper
