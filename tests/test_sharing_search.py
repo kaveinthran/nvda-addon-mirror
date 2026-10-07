@@ -35,6 +35,13 @@ class SharingSearchTests(unittest.TestCase):
         self.assertEqual(url, self.helper._getSafeWebURL(url))
         self.assertEqual("http://example.org/a", self.helper._getSafeWebURL("http://example.org/a"))
 
+    def test_safe_urls_reject_unicode_whitespace_and_nonprintable_characters(self):
+        for char in ("\u2028", "\u2029", "\u0085", "\u00a0", "\u200b", "\u2060"):
+            with self.subTest(char=repr(char)):
+                self.assertEqual("", self.helper._getSafeWebURL("https://example.org/a" + char + "b"))
+        valid = "https://example.org/café/工具?name=résumé"
+        self.assertEqual(valid, self.helper._getSafeWebURL(valid))
+
     def test_share_preserves_unicode_and_uses_source_then_homepage(self):
         model = types.SimpleNamespace(
             displayName="Tamil தமிழ்", description="Read français and 中文",

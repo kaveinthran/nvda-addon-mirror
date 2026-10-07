@@ -865,7 +865,7 @@ def _isSecureContext() -> bool:
 
 def _getSafeWebURL(value: Any) -> str:
 	"""Return an uncredentialed HTTP(S) URL, or empty text for unusable metadata."""
-	if not isinstance(value, str) or any(ord(char) <= 32 or ord(char) == 127 for char in value):
+	if not isinstance(value, str) or any(char.isspace() or not char.isprintable() for char in value):
 		return ""
 	try:
 		parsed = urlsplit(value)
