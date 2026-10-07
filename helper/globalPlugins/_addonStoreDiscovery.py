@@ -27,6 +27,7 @@ REPOSITORY_OWNER = "repositoryOwner"
 SIMILAR_TITLE = "title"
 SIMILAR_DESCRIPTION = "description"
 SIMILAR_TERMS = "titleDescriptionTerms"
+SIMILAR_SCORE = "score"
 
 
 class CloneFailure(RuntimeError):

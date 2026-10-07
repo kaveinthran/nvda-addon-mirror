@@ -987,13 +987,16 @@ class HelperInitTerminateTests(unittest.TestCase):
         translations = {
             "Author/publisher": "Autor",
             "Title: {terms}": "Titel: {terms}",
+            "Score: {score}": "Punktzahl: {score}",
             "Git could not clone the repository.": "Git konnte das Repository nicht klonen.",
         }
         helper.__dict__["_"] = lambda text: translations.get(text, text)
         plugin = helper.GlobalPlugin.__new__(helper.GlobalPlugin)
         self.assertEqual(
-            "Autor; Titel: network",
-            plugin._discoveryReasonText((("authorPublisher", ()), ("title", ("network",)))),
+            "Autor; Titel: network; Punktzahl: 4",
+            plugin._discoveryReasonText(
+                (("authorPublisher", ()), ("title", ("network",)), ("score", 4)),
+            ),
         )
         failure = type("CloneFailure", (RuntimeError,), {"code": "cloneFailed"})("cloneFailed")
         discovery = types.SimpleNamespace(CloneFailure=failure.__class__)

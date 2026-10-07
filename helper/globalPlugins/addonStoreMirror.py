@@ -602,6 +602,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				parts.append(_("Title or description terms: {terms}").format(
 					terms=", ".join(terms),
 				))
+			elif kind == "score":
+				parts.append(_("Score: {score}").format(score=terms))
 		return "; ".join(parts) if parts else _("No match reason available")
 
 	def _showResults(self, storeVM, title, prompt, results, discovery):
@@ -690,7 +692,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			_("More like {name}").format(name=discovery.displayName(item.model)),
 			_("Choose an add-on. Results are limited to the loaded catalog. "
 			  "Press Enter to return to it in the Add-on Store."),
-			[(model, reasons) for model, reasons, _score in matches],
+			[(model, reasons + (("score", score),)) for model, reasons, score in matches],
 			discovery,
 		)
 
