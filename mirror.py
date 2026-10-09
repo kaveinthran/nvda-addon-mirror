@@ -2248,7 +2248,8 @@ def fetch_github_owners(
                     raise
                 log(
                     "GitHub owner repository discovery was rate-limited; "
-                    "checking all cached add-on repositories and retrying discovery later"
+                    "checking all cached add-on repositories and retrying discovery later: "
+                    f"{str(exc)[:300]}"
                 )
             else:
                 discovered_folded = {
