@@ -1839,8 +1839,12 @@ def _github_owner_repository_names(owner_specs, batch_size=8):
     pending = list(specs_by_login)
     while pending:
         next_pending = []
-        for offset in range(0, len(pending), batch_size):
-            batch = pending[offset:offset + batch_size]
+        batches = [
+            pending[offset:offset + batch_size]
+            for offset in range(0, len(pending), batch_size)
+        ]
+        while batches:
+            batch = batches.pop()
             fields = []
             aliases = {}
             for index, login in enumerate(batch):
@@ -1863,7 +1867,19 @@ def _github_owner_repository_names(owner_specs, batch_size=8):
                     " parent { nameWithOwner } }"
                     " pageInfo { hasNextPage endCursor } } } }"
                 )
-            data = _github_graphql("query {" + "\n".join(fields) + "}")
+            try:
+                data = _github_graphql("query {" + "\n".join(fields) + "}")
+            except RuntimeError as exc:
+                # The Actions GITHUB_TOKEN gets a smaller per-query resource
+                # allowance than a personal token, and a batch of large
+                # accounts exceeds it (discovery failed every build for nine
+                # days this way). Halve the batch and retry; one account
+                # that still exceeds it raises as before.
+                if "RESOURCE_LIMITS_EXCEEDED" not in str(exc) or len(batch) == 1:
+                    raise
+                middle = len(batch) // 2
+                batches.extend([batch[:middle], batch[middle:]])
+                continue
             for alias, login in aliases.items():
                 owner = data.get(alias)
                 if owner is None:

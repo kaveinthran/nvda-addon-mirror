@@ -2,6 +2,7 @@ import json
 import io
 import http.client
 import os
+import re
 import tempfile
 import unittest
 import zipfile
@@ -681,6 +682,22 @@ class GitHubOwnerTests(unittest.TestCase):
 
         self.assertEqual({"present/addon"}, repositories)
         self.assertEqual({}, fork_parents)
+
+    def test_oversized_batch_is_split_until_it_fits(self):
+        def graphql(query):
+            if query.count("repositoryOwner(") > 1:
+                raise RuntimeError("GitHub GraphQL errors: [{'type': 'RESOURCE_LIMITS_EXCEEDED'}]")
+            login = re.search(r'login:"([^"]+)"', query).group(1)
+            return {"owner0": {"repositories": {
+                "nodes": [{"nameWithOwner": f"{login}/addon", "isFork": False}],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            }}}
+
+        with mock.patch.object(mirror, "_github_graphql", side_effect=graphql):
+            repositories, _ = mirror._github_owner_repository_names(
+                [{"login": "a"}, {"login": "b"}, {"login": "c"}]
+            )
+        self.assertEqual({"a/addon", "b/addon", "c/addon"}, repositories)
 
     def test_every_owner_missing_stops_publication(self):
         with mock.patch.object(
