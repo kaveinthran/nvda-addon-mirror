@@ -202,6 +202,16 @@ GITHUB_OWNER_CACHE_VERSION = "v2-displayname"
 GITHUB_OWNER_DISCOVERY_TTL_SECONDS = 24 * 60 * 60
 DOWNLOAD_RECHECK_SECONDS = 24 * 60 * 60
 DOWNLOAD_RETRY_SECONDS = 6 * 60 * 60
+#: Authors often replace a bundle under the same name within hours of the
+#: first upload (the mirror recorded NeuralVoiceManager 2026.10.10, then the
+#: author replaced the file two and a half hours later and NVDA rejected the
+#: stale sha256 for a day). The cached Last-Modified dates the upload, so an
+#: entry younger than FRESH_UPLOAD_SECONDS gets a conditional recheck every
+#: FRESH_RECHECK_SECONDS instead of waiting out the 24h TTL. The last check
+#: is derived from next_check, so entries written before this rule get the
+#: fast recheck with no cache migration.
+FRESH_UPLOAD_SECONDS = 24 * 60 * 60
+FRESH_RECHECK_SECONDS = 60 * 60
 #: A catalog that publishes a free-form version ("unknown", "current") still
 #: ships the real one inside the bundle's manifest.ini. The hashing pass
 #: already streams those bytes, so the manifest is read from the stream it
@@ -524,6 +534,30 @@ def bundle_manifest_version(raw):
     return _manifest_value(manifest_text, "version").strip()
 
 
+def _fresh_upload_recheck_due(cached, usable, same_version, now):
+    """True when a recently-uploaded file is due its hourly conditional recheck.
+
+    The cached Last-Modified dates the upload; if the file was seen within
+    FRESH_UPLOAD_SECONDS and the hourly recheck has elapsed since the last
+    check (derived from next_check), the caller falls through to the
+    conditional GET instead of returning the stale record. Entries from hosts
+    that ignore conditional requests carry "ignores_conditional" and never
+    fast-recheck: without a 304 the hourly request would be a full download,
+    which is exactly the bulk re-download the authors cannot afford.
+    """
+    if not (usable and same_version):
+        return False
+    if cached.get("ignores_conditional"):
+        return False
+    if not (cached.get("etag") or cached.get("last_modified")):
+        return False
+    modified_ms = parse_http_date_to_ms(cached.get("last_modified"))
+    if modified_ms is None or modified_ms < (now - FRESH_UPLOAD_SECONDS) * 1000:
+        return False
+    last_check = cached.get("next_check", 0) - DOWNLOAD_RECHECK_SECONDS
+    return last_check + FRESH_RECHECK_SECONDS <= now
+
+
 def cached_download(entry, cached=None, force=False, now=None, capture_limit=0,
                     inspect=False):
     """Return (cache record, error), with no package request between daily checks.
@@ -560,23 +594,26 @@ def cached_download(entry, cached=None, force=False, now=None, capture_limit=0,
     )
     if not force and not unexamined:
         if same_version and cached.get("next_check", 0) > now:
-            return dict(cached), cached.get("error")
+            if _fresh_upload_recheck_due(cached, usable, same_version, now):
+                # Recently uploaded and the hourly recheck is due: fall
+                # through to the conditional GET rather than trust the record
+                # for a day. A 304 costs the host nothing.
+                log(f"Fresh upload recheck: {entry.get('download_url')}")
+            else:
+                return dict(cached), cached.get("error")
         # Seed old deployments without probing every author's files at once.
         if usable and "next_check" not in cached and (
             same_version or cached.get("version") is None
         ):
             return dict(cached, version=version,
                         next_check=now + DOWNLOAD_RECHECK_SECONDS), None
+    sent_validators = usable and same_version and not force and not unexamined
     try:
         digest, size, etag, modified, body = sha256_stream(
             entry["download_url"],
             # An unexamined bundle must arrive as a body, so it is asked for
             # unconditionally; a 304 would carry no manifest to read.
-            validators=(
-                cached
-                if usable and same_version and not force and not unexamined
-                else None
-            ),
+            validators=(cached if sent_validators else None),
             capture_limit=capture_limit,
         )
     except HTTPError as exc:
@@ -595,6 +632,17 @@ def cached_download(entry, cached=None, force=False, now=None, capture_limit=0,
         record = {"sha256": digest, "size": size, "etag": etag,
                   "last_modified": modified, "version": version,
                   "next_check": now + DOWNLOAD_RECHECK_SECONDS}
+        # Validators were sent and the host answered with a full body anyway
+        # while the bytes never changed: it ignores conditional requests, so
+        # a 304 will never arrive and the hourly fresh-upload recheck would
+        # cost the author a full download every time. Flag it once and never
+        # fast-recheck that URL again. A changed body (a real replacement)
+        # is stored normally: the new Last-Modified makes it a fresh upload
+        # and the next recheck is a cheap conditional request on hosts like
+        # nvda.ru that honour them.
+        if sent_validators and digest == cached.get("sha256"):
+            record["ignores_conditional"] = True
+            log(f"Host ignores conditional requests: {entry.get('download_url')}")
         if capture_limit:
             # Store the answer even when it is empty: the key's presence is how
             # the next build knows this bundle has already been inspected and

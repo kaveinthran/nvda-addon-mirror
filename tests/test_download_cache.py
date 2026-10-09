@@ -3,6 +3,7 @@ import tempfile
 import unittest
 import zipfile
 from email.message import Message
+from email.utils import formatdate
 from unittest import mock
 from urllib.error import HTTPError, URLError
 
@@ -382,3 +383,99 @@ class PolledSourceTests(unittest.TestCase):
         entries = mirror.polled_source("ru", self.cache, fetch, ttl=3600, now=100)
         self.assertEqual(self.entries, entries)
         fetch.assert_called_once()
+
+
+class FreshUploadRecheckTests(unittest.TestCase):
+    """An author replacing a bundle under the same name within hours.
+
+    The 24h recheck would keep publishing the stale sha256 for a day, which
+    NVDA rejects on install. A bundle first seen within
+    FRESH_UPLOAD_SECONDS gets a conditional recheck every FRESH_RECHECK_SECONDS
+    until its upload ages out.
+    """
+
+    def setUp(self):
+        self.entry = {"download_url": "https://example.invalid/addon",
+                      "version": "1.0"}
+        self.now = 2_000_000
+
+    def _fresh_record(self, checked_at, uploaded_at):
+        return {"sha256": "a" * 64, "size": 123, "version": "1.0",
+                "etag": '"fresh"', "last_modified": formatdate(uploaded_at, usegmt=True),
+                "next_check": checked_at + mirror.DOWNLOAD_RECHECK_SECONDS}
+
+    def test_fresh_upload_rechecks_after_an_hour_via_conditional_get(self):
+        cached = self._fresh_record(self.now, self.now)
+        not_modified = HTTPError(
+            self.entry["download_url"], 304, "Not modified", Message(), io.BytesIO(),
+        )
+        with mock.patch.object(mirror, "sha256_stream", side_effect=not_modified) as download:
+            record, error = mirror.cached_download(
+                self.entry, cached, now=self.now + mirror.FRESH_RECHECK_SECONDS,
+            )
+        download.assert_called_once_with(
+            self.entry["download_url"], validators=cached, capture_limit=0,
+        )
+        self.assertEqual("a" * 64, record["sha256"])
+        self.assertEqual(
+            self.now + mirror.FRESH_RECHECK_SECONDS + mirror.DOWNLOAD_RECHECK_SECONDS,
+            record["next_check"],
+        )
+        self.assertIsNone(error)
+
+    def test_old_upload_still_waits_the_full_24h(self):
+        uploaded = self.now - mirror.FRESH_UPLOAD_SECONDS - 3600
+        cached = self._fresh_record(self.now, uploaded)
+        with mock.patch.object(mirror, "sha256_stream") as download:
+            record, error = mirror.cached_download(
+                self.entry, cached, now=self.now + mirror.FRESH_RECHECK_SECONDS,
+            )
+        download.assert_not_called()
+        self.assertEqual(cached, record)
+        self.assertIsNone(error)
+
+    def test_replaced_file_gets_the_new_sha256(self):
+        cached = self._fresh_record(self.now, self.now)
+        new_body = ("b" * 64, 456, '"replacement"',
+                    formatdate(self.now + 3600, usegmt=True), None)
+        with mock.patch.object(mirror, "sha256_stream", return_value=new_body) as download:
+            record, error = mirror.cached_download(
+                self.entry, cached, now=self.now + mirror.FRESH_RECHECK_SECONDS,
+            )
+        download.assert_called_once()
+        self.assertEqual("b" * 64, record["sha256"])
+        self.assertNotIn("ignores_conditional", record)
+        self.assertEqual(
+            self.now + mirror.FRESH_RECHECK_SECONDS + mirror.DOWNLOAD_RECHECK_SECONDS,
+            record["next_check"],
+        )
+        self.assertIsNone(error)
+
+    def test_host_ignoring_conditionals_is_flagged_once(self):
+        cached = self._fresh_record(self.now, self.now)
+        same_body = ("a" * 64, 123, '"fresh"',
+                     formatdate(self.now + 3600, usegmt=True), None)
+        with mock.patch.object(mirror, "sha256_stream", return_value=same_body) as download:
+            record, error = mirror.cached_download(
+                self.entry, cached, now=self.now + mirror.FRESH_RECHECK_SECONDS,
+            )
+            self.assertTrue(record["ignores_conditional"])
+            self.assertIsNone(error)
+            # Flagged: the hourly recheck never applies again, so the record
+            # is trusted until the ordinary 24h TTL expires.
+            again, _ = mirror.cached_download(
+                self.entry, record, now=self.now + 2 * mirror.FRESH_RECHECK_SECONDS,
+            )
+            self.assertTrue(again["ignores_conditional"])
+        download.assert_called_once()
+
+    def test_entries_without_validators_never_fast_recheck(self):
+        cached = {"sha256": "a" * 64, "size": 123, "version": "1.0",
+                  "next_check": self.now + mirror.DOWNLOAD_RECHECK_SECONDS}
+        with mock.patch.object(mirror, "sha256_stream") as download:
+            record, error = mirror.cached_download(
+                self.entry, cached, now=self.now + mirror.FRESH_RECHECK_SECONDS,
+            )
+        download.assert_not_called()
+        self.assertEqual(cached, record)
+        self.assertIsNone(error)
