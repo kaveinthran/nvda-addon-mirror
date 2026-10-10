@@ -184,6 +184,19 @@ class HistoryTests(unittest.TestCase):
         self.assertIn("1 have no published notes", changelogs._historyStatus(rows))
         self.assertIn("GitHub published releases", changelogs._historyStatus(rows))
 
+    def test_commit_history_labels_unknown_and_known_dates_as_commit_dates(self):
+        rows = changelogs._historyRows(self.model, [
+            {"sha": "a" * 40, "message": "Unknown", "date": None},
+            {"sha": "b" * 40, "message": "Invalid", "date": "not-a-date"},
+        ], None, "commits")
+        self.assertIn("Commit date unknown", changelogs._historyItemLabel(rows, 0))
+        self.assertIn("Commit date unknown", changelogs._historyItemLabel(rows, 1))
+
+        known = changelogs._historyRows(self.model, [
+            {"sha": "c" * 40, "message": "Known", "date": "2024-01-02T03:00:00Z"},
+        ], None, "commits")
+        self.assertIn("2024-01-02 (UTC)", changelogs._historyItemLabel(known, 0))
+
     def test_commits_are_one_page_and_labeled_as_development_history(self):
         commits = [
             {"sha": "abcdef012345", "commit": {"message": "First subject\n\nDetails",

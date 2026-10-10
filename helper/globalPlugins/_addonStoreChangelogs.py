@@ -964,9 +964,10 @@ def _historyItemLabel(rows, index):
 		dateText = datetime.fromtimestamp(date, timezone.utc).strftime("%Y-%m-%d (UTC)") if date else None
 	except (ValueError, OverflowError, OSError):
 		dateText = None
+	unknownDate = _("Commit date unknown") if source == "GitHub commit" else _("Release date unknown")
 	# Translators: One changelog history row with version, release date, and source.
 	return _("{version}; {date}; {source}").format(
-		version=version or _("Notes"), date=dateText or _("Release date unknown"),
+		version=version or _("Notes"), date=dateText or unknownDate,
 		source=_provenanceLabel(source),
 	)
 
@@ -1278,6 +1279,8 @@ class ChangelogFeature:
 		original = cls._refresh
 		storeModel = modelModule._AddonStoreModel
 		def refresh(view):
+			if getattr(view, "_isBeingDestroyed", False):
+				return
 			details = None if view._detailsVM.listItem is None else view._detailsVM.listItem.model
 			append = view._appendDetailsLabelValue
 			nativeTranslate = getattr(detailsModule, "pgettext", getattr(builtins, "pgettext", None))
@@ -1299,6 +1302,8 @@ class ChangelogFeature:
 					view._appendDetailsLabelValue = append
 				else:
 					del view._appendDetailsLabelValue
+			if getattr(view, "_isBeingDestroyed", False):
+				return
 			if not isinstance(details, storeModel):
 				return
 			if not dateShown:

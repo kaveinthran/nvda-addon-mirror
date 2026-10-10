@@ -311,6 +311,68 @@ class DateSemanticsTests(unittest.TestCase):
         self.assertEqual("Date meaning:", view.rows[1][0])
         self.assertEqual(2, len(view.rows))
 
+    def test_details_refresh_skips_destroyed_views_before_access(self):
+        class StoreModel:
+            publicationDate = property(lambda self: "native")
+
+        class Details:
+            def _appendDetailsLabelValue(self, label, value):
+                raise AssertionError("destroyed view was accessed")
+
+            def _refresh(self):
+                raise AssertionError("native refresh should not run")
+
+        modules = {
+            "gui.addonStoreGui.controls.details": types.SimpleNamespace(AddonDetails=Details),
+            "addonStore.models.addon": types.SimpleNamespace(_AddonStoreModel=StoreModel),
+        }
+
+        class Loader:
+            @staticmethod
+            def import_module(name):
+                if name in modules:
+                    return modules[name]
+                raise ImportError(name)
+
+        dates.ChangelogFeature(Plugin())._patchDateDetails(Loader, modules["addonStore.models.addon"])
+        view = Details()
+        view._isBeingDestroyed = True
+        view._refresh()
+
+    def test_details_refresh_rechecks_destruction_and_restores_append_override(self):
+        class StoreModel:
+            publicationDate = property(lambda self: "native")
+
+        class Details:
+            def _appendDetailsLabelValue(self, label, value):
+                self.rows.append((label, value))
+
+            def _refresh(self):
+                self._isBeingDestroyed = True
+                self._appendDetailsLabelValue("Publication date:", "native")
+
+        modules = {
+            "gui.addonStoreGui.controls.details": types.SimpleNamespace(AddonDetails=Details),
+            "addonStore.models.addon": types.SimpleNamespace(_AddonStoreModel=StoreModel),
+        }
+
+        class Loader:
+            @staticmethod
+            def import_module(name):
+                if name in modules:
+                    return modules[name]
+                raise ImportError(name)
+
+        plugin = Plugin()
+        dates.ChangelogFeature(plugin)._patchDateDetails(Loader, modules["addonStore.models.addon"])
+        view = Details()
+        view.rows = []
+        view._detailsVM = types.SimpleNamespace(listItem=types.SimpleNamespace(model=StoreModel()))
+        originalAppend = view._appendDetailsLabelValue
+        view._refresh()
+        self.assertEqual([("Last updated:", "native")], view.rows)
+        self.assertIs(view._appendDetailsLabelValue.__func__, originalAppend.__func__)
+
 
 if __name__ == "__main__":
     unittest.main()
